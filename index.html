@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comic Book Hunter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=Bangers&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+<!--
+  COMIC BOOK HUNTER — five repeated choice trials
+
+  Each of five trials shows the chance each shop has a rare comic in stock. Three collectors always choose
+  the highest posted chance. Each shop has one copy; if multiple collectors arrive, one gets it at random.
+  Every trial has a top shop posted at 80–95% (a strong lure). Order alternates trap / non-trap / trap / non-trap / trap;
+  which trap board and which non-trap board fill each slot is shuffled.
+    Trap (top shop worse after the 4-way split; alternative wins by ~7 pp):
+      95% -> 23.75% vs 31% | 90% -> 22.5% vs 29% | 85% -> 21.25% vs 28%
+    Non-trap (top shop still best; wins by ~5 pp), tops similar to or lower than trap tops:
+      88% -> 22% vs 17% | 82% -> 20.5% vs 15%
+
+  STANDALONE / REALEYE VERSION (converted from the Qualtrics survey "Comic Hunter Student")
+  URL parameters:
+    cond=comp   competition condition (3 rival collectors)   [default]
+    cond=none   no-competition condition
+    why=1       show the open-ended "How did you decide?" question (off by default, as in Qualtrics)
+    debug=1     show the raw data on the end screen
+  Data: on completion the data are (1) POSTed to DATA_ENDPOINT below (Google Sheet), (2) sent to RealEye
+  as a user interaction, and (3) shown as a completion code that links the row to the participant.
+-->
+<script>
+  /* ====== CONFIG: paste your Google Apps Script web-app URL here (see README) ====== */
+  window.CH_CONFIG = {
+    DATA_ENDPOINT: ''   // e.g. 'https://script.google.com/macros/s/XXXXXXXX/exec'
+  };
+</script>
+<!-- RealEye embedded-website SDK. It only activates when the page is opened inside a RealEye study. -->
+<script type="module">
+  import EmbeddedPageSdk from "https://app.realeye.io/sdk/js/testRunnerEmbeddableSdk-latest.js";
+  function initRealEye(){
+    try { window.reSdk = new EmbeddedPageSdk(false, null, false); }
+    catch (e) { console.warn('RealEye SDK not started:', e); }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initRealEye);
+  else initRealEye();
+</script>
+<style>
+:root{
+  --paper:#fbf4e4; --ink:#141414; --ink2:#4a4540; --red:#e63946; --yellow:#ffd23f; --blue:#2b6cb0; --cyan:#3fb8d8;
+  --green:#2e9e5b; --panel:#fffdf6; --line:#141414; --muted:#7a7268;
+  --display:"Bangers", Impact, "Arial Black", sans-serif; --body:"Archivo", "Helvetica Neue", Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;color:var(--ink);font:16px/1.55 var(--body);
+  background:radial-gradient(circle at 1px 1px, rgba(20,20,20,.08) 1px, transparent 1.6px) 0 0/9px 9px, var(--paper)}
+.wrap{max-width:900px;margin:0 auto;padding:22px 16px 40px}
+.card{background:var(--panel);border:3px solid var(--line);border-radius:4px;padding:24px;box-shadow:7px 7px 0 var(--line)}
+.hidden{display:none !important}
+h1{font:400 clamp(44px,9vw,84px)/0.95 var(--display);letter-spacing:.02em;margin:0 0 6px;color:var(--yellow);
+  -webkit-text-stroke:3px var(--ink);text-shadow:6px 6px 0 var(--red)}
+h2{font:400 30px/1.05 var(--display);letter-spacing:.03em;margin:0 0 12px}
+.eyebrow{font:800 12px var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin:0 0 8px}
+p{margin:0 0 12px}
+.muted{color:var(--muted)}
+.btn{appearance:none;font:400 22px var(--display);letter-spacing:.06em;padding:10px 22px;background:var(--yellow);color:var(--ink);
+  border:3px solid var(--ink);border-radius:3px;box-shadow:4px 4px 0 var(--ink);cursor:pointer}
+.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink)}
+.btn[disabled]{opacity:.4;cursor:not-allowed;box-shadow:none}
+.btn.ghost{background:var(--panel)}
+.btn.test{font:700 12px var(--body);letter-spacing:.06em;background:transparent;border:2px dashed var(--muted);color:var(--muted);box-shadow:none;padding:8px 12px}
+.row{display:flex;gap:12px;justify-content:flex-end;align-items:center;margin-top:18px;flex-wrap:wrap}
+/* setup */
+.tag{display:inline-block;font:800 11px var(--body);letter-spacing:.1em;background:var(--ink);color:var(--yellow);padding:3px 8px;margin-bottom:10px}
+/* briefing */
+.brief-block{border:3px solid var(--ink);background:#fff;padding:14px 18px 6px;margin:0 0 14px;position:relative;animation:pop .35s ease-out both}
+.brief-block .cap{position:absolute;top:-14px;left:12px;background:var(--yellow);border:2px solid var(--ink);font:400 18px var(--display);letter-spacing:.06em;padding:1px 10px}
+.brief-block p{font-size:17px;margin-top:8px}
+.brief-block.comp .cap{background:var(--red);color:#fff}
+@keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+.rivals{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 10px}
+.rival{display:flex;align-items:center;gap:8px;border:2px solid var(--ink);background:var(--paper);padding:6px 10px 6px 6px;font-weight:800}
+/* quiz */
+.q{display:grid;grid-template-columns:120px 1fr;gap:16px;align-items:start;border:3px solid var(--ink);background:#fff;padding:14px;margin:0 0 14px}
+.q svg{width:120px;height:auto;border:2px solid var(--ink);background:var(--paper)}
+.q p{font-weight:600;margin:0 0 8px}
+.q label{display:block;padding:8px 10px;border:2px solid #d8d0bf;margin:6px 0;cursor:pointer;background:#fff}
+.q label:has(input:checked){border-color:var(--ink);background:#fff8d6}
+.q.wrong label:has(input:checked){border-color:var(--red);background:#ffe9ea}
+@media (max-width:560px){.q{grid-template-columns:1fr}}
+.note{color:var(--red);font-weight:700;min-height:22px}
+/* game */
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.pill{font:800 12px var(--body);letter-spacing:.08em;text-transform:uppercase;border:2px solid var(--ink);background:#fff;padding:5px 10px}
+.competitor-reminder{display:grid;grid-template-columns:116px minmax(0,1fr);column-gap:12px;align-items:center;padding:6px 10px;margin:0 0 10px;border:2px solid var(--ink);border-radius:3px;background:#fffdf6;color:var(--ink);font:800 13px/1.2 var(--body)}
+.competitor-avatars{display:flex;align-items:center;gap:4px;width:116px;min-width:116px}.competitor-avatars svg{display:block;box-sizing:border-box;width:36px;height:36px;flex:0 0 36px;border:2px solid var(--ink);border-radius:50%;background:#fff;box-shadow:2px 2px 0 var(--ink)}
+.competitor-reminder>span{display:block;min-width:0}
+.mapbox{border:3px solid var(--ink);background:#efe6d0;overflow:hidden}
+svg{display:block;width:100%;height:auto}
+.shop{cursor:pointer}
+.status{min-height:24px;font-weight:600;color:var(--ink2)}
+.modal-bg{position:fixed;inset:0;background:rgba(20,20,20,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+.modal{background:var(--panel);border:3px solid var(--ink);box-shadow:7px 7px 0 var(--ink);padding:22px;max-width:440px;width:100%}
+textarea{width:100%;min-height:110px;border:3px solid var(--ink);padding:10px;font:16px var(--body)}
+pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--ink);padding:12px;max-height:320px;overflow:auto}
+/* fit the trial screen into the viewport so nothing has to be scrolled during eye tracking */
+#s-game .mapbox{max-width:calc((100vh - 250px) * 800 / 470);margin:0 auto}
+.code{font:700 34px/1 "Roboto Mono",Consolas,monospace;letter-spacing:.08em;background:#fff;border:3px solid var(--ink);display:inline-block;padding:10px 18px;margin:6px 0 14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Title -->
+  <section id="s-title" class="card hidden">
+    <svg viewBox="0 0 800 300" aria-hidden="true" id="title-art"></svg>
+    <h1>COMIC BOOK<br>HUNTER</h1>
+    <p style="font-size:18px">Somewhere in this city, the rarest comics are turning up on dusty shelves. You're a collector, and every night you get one shot to track one down.</p>
+    <div class="row"><button class="btn" id="t-go">START THE HUNT</button></div>
+  </section>
+
+  <!-- Briefing -->
+  <section id="s-brief" class="card hidden">
+    <p class="eyebrow">How the hunt works</p>
+    <h2>YOUR BRIEFING</h2>
+    <div class="brief-block" data-step data-re-aoi-name="brief-hunt"><span class="cap">THE HUNT</span>
+      <p>Each night, one rare comic is out there. You can visit <b>one shop</b> to try to get it. Your goal is to <b>give yourself the best chance of getting the comic</b>.</p>
+    </div>
+    <div class="brief-block hidden" data-step data-re-aoi-name="brief-map"><span class="cap">THE MAP</span>
+      <p>You'll see a map of five comic shops. Each shop shows the <b>chance it has tonight's comic in stock</b>.</p>
+      <p>Each shop has <b>one copy</b>.</p>
+    </div>
+    <div class="brief-block comp hidden" data-step id="b-comp" data-re-aoi-name="brief-competition"><span class="cap">OTHER COLLECTORS ARE HUNTING TOO</span>
+      <div class="rivals" id="rivals"></div>
+      <p>Three other collectors hunt the same comic every night. They <b>always go to the shop with the highest chance</b>.</p>
+      <p>If you go to the same shop as other collectors and it has the comic, the one copy goes to <b>one of you, chosen at random</b>. You might get it, or one of them might.</p>
+    </div>
+    <div class="brief-block hidden" data-step id="b-no-comp" data-re-aoi-name="brief-no-competition"><span class="cap">NO OTHER COLLECTORS</span>
+      <p>You're the only collector hunting tonight. No one else will visit any of the shops.</p>
+    </div>
+    <div class="brief-block hidden" data-step id="b-fb" data-re-aoi-name="brief-five-trials"><span class="cap">FIVE TRIALS</span>
+      <p>You'll make one choice in each of five trials. You won't see a result between trials.</p>
+    </div>
+    <div class="brief-block hidden" data-step data-re-aoi-name="brief-how-to-play"><span class="cap">HOW TO PLAY</span>
+      <p>Click a shop to select it, then press <b>HUNT!</b></p>
+    </div>
+    <div class="row"><button class="btn" id="brief-next">NEXT ▸</button></div>
+  </section>
+
+  <!-- Quiz -->
+  <section id="s-quiz" class="card hidden">
+    <p class="eyebrow">Quick check</p>
+    <h2>BEFORE YOU HUNT</h2>
+    <div id="quiz-items"></div>
+    <div class="note" id="quiz-note"></div>
+    <div class="row"><button class="btn" id="quiz-check">CHECK</button></div>
+  </section>
+
+  <section id="s-postquiz" class="card hidden">
+    <p class="eyebrow">Quick check</p><h2>AFTER THE HUNT</h2>
+    <p>One last check on the rules. Choose the answer that seems right to you.</p>
+    <div id="post-quiz-items"></div><div class="note" id="post-quiz-note"></div>
+    <div class="row"><button class="btn" id="post-quiz-submit">CONTINUE</button></div>
+  </section>
+
+  <!-- Game -->
+  <section id="s-game" class="card hidden">
+    <div class="competitor-reminder" data-re-aoi-name="competitor-reminder" aria-label="Three other collectors head to the shop with the highest percentage"><div class="competitor-avatars" id="game-rivals" aria-hidden="true"></div><span>3 other collectors head to the highest % shop</span></div>
+    <div class="head">
+      <div><p class="eyebrow" id="g-round">Night 1 of 5</p><h2 id="g-title" data-re-aoi-name="trial-title" style="margin:0">TONIGHT: …</h2></div>
+      <span class="pill" id="g-sel">No shop selected</span>
+    </div>
+    <div class="mapbox"><svg id="map" viewBox="0 0 800 470" role="img" aria-label="City map with five comic shops"></svg></div>
+    <div class="row" style="justify-content:space-between">
+      <div class="status" id="g-status"></div>
+      <button class="btn" id="hunt" data-re-aoi-name="hunt-button" disabled>HUNT!</button>
+    </div>
+  </section>
+
+  <!-- Why -->
+  <section id="s-why" class="card hidden">
+    <p class="eyebrow">Last question</p>
+    <h2>HOW DID YOU DECIDE?</h2>
+    <p>How did you decide which shop to visit? A sentence or two is fine.</p>
+    <textarea id="why-text" maxlength="1500"></textarea>
+    <div class="row"><button class="btn" id="why-next">SUBMIT</button></div>
+  </section>
+
+  <!-- End -->
+  <section id="s-end" class="card hidden">
+    <h1 style="font-size:56px">THAT'S A WRAP!</h1>
+    <p style="font-size:18px">Thanks for hunting! Your completion code is:</p>
+    <div class="code" id="end-code">------</div>
+    <p class="muted" id="end-status">Saving your answers…</p>
+    <div class="row" style="justify-content:flex-start"><button class="btn" id="end-next" disabled>CONTINUE ▸</button></div>
+    <div id="debug-wrap" class="hidden"><span class="tag">DEBUG DATA · TEST ONLY</span><pre id="debug"></pre></div>
+  </section>
+</div>
+
+<!-- Confirm modal -->
+<div class="modal-bg hidden" id="modal">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h2 id="m-text">GO TO THIS SHOP?</h2>
+    <p class="muted">You only get one shop tonight.</p>
+    <div class="row"><button class="btn ghost" id="m-back">GO BACK</button><button class="btn" id="m-ok">HUNT!</button></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent){ const e=document.createElementNS(NS,tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+  /* RealEye: call an SDK method only if the SDK is running (i.e., inside a RealEye study) */
+  function RE(method, arg){ try { if (window.reSdk && typeof window.reSdk[method] === 'function') window.reSdk[method](arg); } catch(e){ console.warn('RealEye', method, e); } }
+  /* Each screen (title, briefing, quiz, trial 1-5, post-quiz, end) is logged as a new RealEye exposure. */
+  function show(id){ document.querySelectorAll('section').forEach(s=>s.classList.add('hidden')); $(id).classList.remove('hidden'); window.scrollTo(0,0);
+    requestAnimationFrame(() => RE('startNextExposure')); }
+  
+  /* ---------------- settings ---------------- */
+  const P = new URLSearchParams(location.search);
+  const S = {
+    cond: P.get('cond') === 'none' ? 'none' : 'comp', mode: 'all', quiz: true,
+    why: P.get('why') === '1',
+    debug: P.get('debug') === '1'
+  };
+  const OTHERS = 3;
+
+  /* The top shop's effective chance is its posted percentage divided by four (you + three others).
+     Traps: top shop suboptimal. Non-traps: top shop optimal. */
+  const TRAPS = [
+    {id:'A',type:'trap',    comic:'Night Raven #1',      p:[95,31,23,18,13]},   // 23.75 vs 31  (alt +7.25)
+    {id:'B',type:'trap',    comic:'Astro-Knight #1',     p:[90,29,22,17,12]},   // 22.50 vs 29  (alt +6.50)
+    {id:'C',type:'trap',    comic:'The Iron Sparrow #1', p:[85,28,21,16,11]}    // 21.25 vs 28  (alt +6.75)
+  ];
+  const NONTRAPS = [
+    {id:'D',type:'nontrap', comic:'Doctor Static #1',    p:[88,17,14,12,9]},    // 22.00 vs 17  (top +5.00)
+    {id:'E',type:'nontrap', comic:'Galaxy Gal #1',       p:[82,15,13,11,8]}     // 20.50 vs 15  (top +5.50)
+  ];
+  let ROUNDS = [];
+
+  const MAP_SHOPS = ['The Golden Age','Bronze Age Books','Speech Bubble','The Back Issue Bin','Kapow Comics'];
+  const RIVALS = [{name:'Dex "Mint" Marlowe', color:'#e63946'},{name:'Vera Okafor', color:'#2b6cb0'},{name:'Mo Castellano', color:'#2e9e5b'}];
+
+  /* ---------------- data ---------------- */
+  let data, r, roundStart, selected, reselections, slotRank, slotName, busy;
+
+  /* ---------------- setup / start ---------------- */
+  function start(){
+    ROUNDS = [TRAPS[0], NONTRAPS[0], TRAPS[1], NONTRAPS[1], TRAPS[2]];   // fixed A-D-B-E-C order
+    const code = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[b % 31]).join('');
+    data = {sessionCode:code, cond:S.cond, mode:S.mode, userAgent:navigator.userAgent, screen:`${screen.width}x${screen.height}`, viewport:`${innerWidth}x${innerHeight}`, trialCount:ROUNDS.length, startedAt:new Date().toISOString(), quizAttempts:0, quizSubmissions:[], postQuiz:{}, rounds:[]};
+    data.trialOrder = ROUNDS.map(x=>x.id);
+    r = 0;
+    configureBriefing(); buildQuiz(); drawTitleArt();
+    show('s-title');
+  }
+
+  /* ---------------- briefing ---------------- */
+  function configureBriefing(){
+    if (S.cond === 'comp') {
+      $('b-no-comp').remove();
+      const avatar = (x,size=30) => `<svg width="${size}" height="${size}" viewBox="0 0 30 30" style="width:${size}px;height:${size}px" role="img" aria-label="${x.name}"><circle cx="15" cy="15" r="13" fill="${x.color}" stroke="#141414" stroke-width="2"/><circle cx="15" cy="12" r="5" fill="#fbf4e4" stroke="#141414" stroke-width="1.5"/><path d="M6 25 Q15 16 24 25" fill="#fbf4e4" stroke="#141414" stroke-width="1.5"/></svg>`;
+      const rv = $('rivals'); if (rv){ rv.innerHTML = ''; RIVALS.forEach(x => {
+        const d = document.createElement('div'); d.className = 'rival';
+        d.innerHTML = avatar(x) + x.name;
+        rv.appendChild(d); }); }
+      const gameRv = $('game-rivals'); if (gameRv) gameRv.innerHTML = RIVALS.map(x => avatar(x,36)).join('');
+    } else {
+      $('b-comp').remove();
+      const reminder = document.querySelector('.competitor-reminder'); if (reminder) reminder.remove();
+    }
+  }
+  let briefShownAt = 0;
+  $('t-go').onclick = () => { show('s-brief'); briefShownAt = performance.now(); };
+  $('brief-next').onclick = () => {
+    const hidden = [...document.querySelectorAll('#s-brief [data-step].hidden')];
+    if (hidden.length){ hidden[0].classList.remove('hidden'); if (hidden.length === 1) $('brief-next').textContent = 'CONTINUE'; hidden[0].scrollIntoView({behavior:'smooth', block:'nearest'}); return; }
+    data.briefingMs = Math.round(performance.now() - briefShownAt);
+    show('s-quiz');
+  };
+
+  /* ---------------- four-item rule quiz ---------------- */
+  function artShop(pct, copies){
+    return `<svg viewBox="0 0 120 90"><rect x="22" y="28" width="76" height="46" fill="#fffdf6" stroke="#141414" stroke-width="3"/>
+      <g>${[0,1,2,3,4,5].map(i=>`<rect x="${22+i*12.7}" y="18" width="12.7" height="12" fill="${i%2?'#fffdf6':'#e63946'}" stroke="#141414" stroke-width="2"/>`).join('')}</g>
+      <rect x="34" y="40" width="52" height="24" fill="#ffd23f" stroke="#141414" stroke-width="2"/>
+      <text x="60" y="58" text-anchor="middle" font-family="Archivo, Arial" font-weight="800" font-size="17">${pct}</text>
+      ${copies ? `<text x="60" y="86" text-anchor="middle" font-family="Archivo, Arial" font-weight="800" font-size="11">${copies}</text>` : ''}</svg>`;
+  }
+  const artCrowd = `<svg viewBox="0 0 120 90"><rect x="40" y="12" width="40" height="30" fill="#fffdf6" stroke="#141414" stroke-width="3"/>
+      <rect x="50" y="20" width="20" height="14" fill="#ffd23f" stroke="#141414" stroke-width="2"/>
+      ${['#ffd23f','#e63946','#2b6cb0','#2e9e5b'].map((c,i)=>`<circle cx="${24+i*24}" cy="66" r="10" fill="${c}" stroke="#141414" stroke-width="2"/>`).join('')}
+      <text x="60" y="88" text-anchor="middle" font-family="Bangers, Impact" font-size="12">4 COLLECTORS</text></svg>`;
+  const artRule = `<svg viewBox="0 0 120 90">${[['92%',18,'#ffd23f'],['20%',46,'#fffdf6'],['15%',74,'#fffdf6']].map(([t,y,f])=>`<rect x="8" y="${y-12}" width="44" height="22" fill="${f}" stroke="#141414" stroke-width="2"/><text x="30" y="${y+4}" text-anchor="middle" font-family="Archivo, Arial" font-weight="800" font-size="13">${t}</text>`).join('')}
+      <g stroke="#141414" stroke-width="2" fill="none"><path d="M104 18 L56 18"/><path d="M104 46 Q80 40 56 22"/><path d="M104 74 Q80 60 56 24"/></g>
+      ${['#e63946','#2b6cb0','#2e9e5b'].map((c,i)=>`<circle cx="108" cy="${18+i*28}" r="8" fill="${c}" stroke="#141414" stroke-width="2"/>`).join('')}</svg>`;
+  const artGoal = `<svg viewBox="0 0 120 90"><rect x="38" y="10" width="44" height="62" fill="#fffdf6" stroke="#141414" stroke-width="3"/><rect x="44" y="16" width="32" height="20" fill="#e63946" stroke="#141414" stroke-width="2"/><text x="60" y="52" text-anchor="middle" font-family="Bangers, Impact" font-size="14">#1</text><path d="M50 78 L60 88 L74 70" stroke="#2e9e5b" stroke-width="5" fill="none"/></svg>`;
+
+  const QUIZ = {
+    q_pct: {art:artShop('92%'), q:'What does the percentage on each shop show?', a:'in',
+      o:[['in','The chance the shop has tonight’s comic in stock'],['mine','Your chance of getting the comic after other collectors arrive'],['cond','How good the condition of the comic is']]},
+    q_split_all: {art:artCrowd, q:'A shop has its one copy, and four collectors (you and three others) arrive. Who gets it?', a:'rand',
+      o:[['rand','One of the four, chosen at random'],['first','Whoever arrives first'],['all','Everyone gets a copy']]},
+    q_rule: {art:artRule, q:'Which shop will the three other collectors go to?', a:'top',
+      o:[['top','The shop with the highest chance'],['rand','A shop chosen at random'],['empty','The shop with the fewest other collectors']]},
+    q_goal: {art:artGoal, q:'What is your goal each night?', a:'best',
+      o:[['best','Give yourself the best chance of getting the comic'],['many','Visit as many shops as possible'],['cheap','Find the cheapest comic']]},
+    q_visit: {art:artShop('60%'), q:'How many shops can you visit each night?', a:'one',
+      o:[['one','One'],['two','Two'],['all','As many as you like']]},
+    q_copies: {art:artShop('60%'), q:'If a shop has the comic in stock, how many copies are available?', a:'one',
+      o:[['one','One'],['two','Two'],['three','Three']]},
+    q_no_comp: {art:artGoal, q:'How many other collectors are hunting tonight?', a:'zero',
+      o:[['three','Three; they all go to the highest-percentage shop'],['random','Three; they each choose a shop at random'],['zero','None; you are the only collector']]}
+  };
+  const QUIZ_SET = S.cond === 'comp'
+    ? ['q_pct','q_split_all','q_rule','q_goal']
+    : ['q_pct','q_copies','q_no_comp','q_goal'];
+  const QUIZ_END_SET = QUIZ_SET.slice();
+  const answerMap = (ids, prefix) => Object.fromEntries(ids.map(id => [id, (document.querySelector(`input[name="${prefix}${id}"]:checked`)||{}).value || null]));
+  function buildQuiz(){
+    const render = (ids,prefix) => ids.map(id => { const q = QUIZ[id];
+      return `<div class="q" id="${prefix}${id}">${q.art}<div><p>${q.q}</p>${q.o.map(([v,t])=>`<label><input type="radio" name="${prefix}${id}" value="${v}"> ${t}</label>`).join('')}</div></div>`; }).join('');
+    $('quiz-items').innerHTML = render(QUIZ_SET,'pre-');
+    $('post-quiz-items').innerHTML = render(QUIZ_END_SET,'post-');
+  }
+  $('quiz-check').onclick = () => {
+    data.quizAttempts++;
+    let ok = true;
+    const answers = answerMap(QUIZ_SET,'pre-');
+    QUIZ_SET.forEach(id => { const good = answers[id] === QUIZ[id].a; $('pre-'+id).classList.toggle('wrong', !good); ok = ok && good; });
+    data.quizSubmissions.push({answers, correctCount:QUIZ_SET.filter(id=>answers[id]===QUIZ[id].a).length});
+    if (ok) startRound(); else $('quiz-note').textContent = 'Not quite. Check your briefing and try again.';
+  };
+  $('post-quiz-submit').onclick = () => {
+    const answers = answerMap(QUIZ_END_SET,'post-');
+    data.postQuiz = {answers, correctCount:QUIZ_END_SET.filter(id=>answers[id]===QUIZ[id].a).length, completedAt:new Date().toISOString()};
+    afterPostQuiz();
+  };
+  start();
+
+  /* ---------------- odds ---------------- */
+  function copiesOf(){ return 1; }
+  function collectorsAt(k){ return 1 + (S.cond === 'comp' && k === 0 ? OTHERS : 0); }
+  function oddsAt(R, k){ return R.p[k] * Math.min(1, copiesOf(R,k) / collectorsAt(k)); }
+
+  /* ---------------- map ---------------- */
+  const HOME = [400, 245];
+  /* Original map positions, kept fixed for every trial. */
+  const SLOTS = [[150,90],[650,90],[690,320],[400,372],[110,330]];
+  /* Each shop keeps its point on the map. Highest-shop locations are unique across trials;
+     on competition traps, the payoff-optimal shop is placed across the map from the lure. */
+  const ROLE_LAYOUT = [
+    {highest:0, trapOptimal:1}, {highest:1, trapOptimal:4},
+    {highest:4, trapOptimal:2}, {highest:3, trapOptimal:3},
+    {highest:2, trapOptimal:0}
+  ];
+  function drawCity(svg){
+    svg.innerHTML = '';
+    el('rect',{width:800,height:470,fill:'#efe6d0'},svg);
+    const g = el('g',{},svg);
+    // blocks
+    for (let x=0; x<800; x+=160) for (let y=0; y<470; y+=118){
+      el('rect',{x:x+14,y:y+14,width:132,height:90,fill:'#e2d6bb',stroke:'#cbbd9c','stroke-width':2},g);
+      for (let i=0;i<3;i++) el('rect',{x:x+22+i*42,y:y+24+(i%2)*10,width:32,height:50-(i%2)*10,fill:'#d4c6a6'},g);
+    }
+    // park
+    el('rect',{x:334,y:132,width:132,height:90,fill:'#bfd8a8',stroke:'#9cbf86','stroke-width':2},g);
+    [[360,160],[400,190],[440,155],[372,205]].forEach(([x,y])=>el('circle',{cx:x,cy:y,r:12,fill:'#8fbf73',stroke:'#6e9c55','stroke-width':2},g));
+    // streets
+    for (let x=0; x<=800; x+=160) el('rect',{x:x-6,y:0,width:12,height:470,fill:'#fbf4e4'},g);
+    for (let y=0; y<=470; y+=118) el('rect',{x:0,y:y-6,width:800,height:12,fill:'#fbf4e4'},g);
+    // halftone overlay
+    const pat = el('pattern',{id:'dots',width:8,height:8,patternUnits:'userSpaceOnUse'},el('defs',{},svg));
+    el('circle',{cx:2,cy:2,r:1.1,fill:'#141414',opacity:.07},pat);
+    el('rect',{width:800,height:470,fill:'url(#dots)'},svg);
+    // home
+    const h = el('g',{'data-re-aoi-name':'your-place',transform:`translate(${HOME[0]},${HOME[1]})`},svg);
+    el('polygon',{points:'-22,-4 0,-24 22,-4',fill:'#e63946',stroke:'#141414','stroke-width':3},h);
+    el('rect',{x:-17,y:-4,width:34,height:26,fill:'#fffdf6',stroke:'#141414','stroke-width':3},h);
+    el('rect',{x:-5,y:6,width:10,height:16,fill:'#2b6cb0',stroke:'#141414','stroke-width':2},h);
+    const lab = el('text',{x:0,y:40,'text-anchor':'middle','font-family':'Bangers, Impact','font-size':15,fill:'#141414'},h); lab.textContent = 'YOUR PLACE';
+  }
+  function drawShop(svg, slot, s){
+    const [x,y] = SLOTS[slot], R = ROUNDS[r], rank = slotRank[slot];
+    const g = el('g',{class:'shop','data-slot':slot,'data-re-aoi-name':`shop-rank${rank+1}`,transform:`translate(${x},${y})`},svg);
+    el('rect',{x:-64,y:-52,width:128,height:104,fill:'transparent'},g);   // hit area
+    // storefront
+    el('rect',{x:-30,y:-30,width:60,height:36,fill:'#fffdf6',stroke:'#141414','stroke-width':3},g);
+    for (let i=0;i<5;i++) el('rect',{x:-30+i*12,y:-40,width:12,height:11,fill:i%2?'#fffdf6':'#e63946',stroke:'#141414','stroke-width':2},g);
+    el('rect',{x:-24,y:-22,width:18,height:22,fill:'#3fb8d8',stroke:'#141414','stroke-width':2},g);
+    el('rect',{x:4,y:-22,width:20,height:28,fill:'#2b6cb0',stroke:'#141414','stroke-width':2},g);
+    // sign
+    const sg = el('g',{class:'sign'},g);
+    el('rect',{x:-78,y:10,width:156,height:46,fill:'#ffd23f',stroke:'#141414','stroke-width':3,class:'sign-bg'},sg);
+    const label = s.toUpperCase();
+    const t1 = el('text',{x:0,y:26,'text-anchor':'middle','font-family':'Archivo, Arial','font-weight':800,'font-size':11,'textLength':Math.min(140,Math.max(60,label.length*6.6)),'lengthAdjust':'spacingAndGlyphs',fill:'#141414'},sg); t1.textContent = label;
+    const t2 = el('text',{x:0,y:51,'text-anchor':'middle','font-family':'Roboto Mono, Consolas, monospace','font-weight':700,'font-size':(R.p[rank]>=100?17:20),fill:'#141414'},sg); t2.textContent = R.p[rank];
+    const ps = el('tspan',{'font-family':'Archivo, Arial','font-weight':800,'font-size':18,dx:1},t2); ps.textContent = '%';
+    const is = el('tspan',{dx:6},t2); is.textContent = 'IN STOCK';
+    g.addEventListener('click', () => pick(slot));
+    return g;
+  }
+
+  /* ---------------- rounds ---------------- */
+  function startRound(){
+    show('s-game');
+    const R = ROUNDS[r];
+    selected = null; reselections = 0; busy = false;
+    const layout = ROLE_LAYOUT[r];
+    slotRank = Array(5);
+    slotRank[layout.highest] = 0;
+    const optimalRank = R.type === 'trap' && S.cond === 'comp' ? 1 : 0;
+    const optimalSlot = optimalRank === 0 ? layout.highest : layout.trapOptimal;
+    slotRank[optimalSlot] = optimalRank;
+    const remainingSlots = [0,1,2,3,4].filter(slot => slotRank[slot] === undefined);
+    const remainingRanks = [0,1,2,3,4].filter(rank => !slotRank.includes(rank));
+    remainingSlots.forEach((slot,i) => { slotRank[slot] = remainingRanks[i]; });
+    slotName = MAP_SHOPS.slice();
+    $('g-round').textContent = `Trial ${r+1} of ${ROUNDS.length}`;
+    $('g-title').textContent = `TONIGHT: ${R.comic.toUpperCase()}`;
+    $('g-sel').textContent = 'No shop selected';
+    $('g-status').textContent = '';
+    $('hunt').disabled = true;
+    const svg = $('map'); drawCity(svg);
+    slotName.forEach((n,i) => drawShop(svg, i, n));
+    el('g',{id:'hunter-layer'},svg);
+    roundStart = performance.now();
+  }
+  function pick(slot){
+    if (busy) return;
+    if (selected !== null && selected !== slot) reselections++;
+    selected = slot;
+    document.querySelectorAll('#map .shop').forEach(g => {
+      const on = +g.dataset.slot === slot;
+      g.querySelector('.sign-bg').setAttribute('fill', on ? '#3fb8d8' : '#ffd23f');
+      g.querySelector('.sign-bg').setAttribute('stroke-width', on ? 5 : 3);
+    });
+    $('g-sel').textContent = 'Selected: ' + slotName[slot];
+    $('hunt').disabled = false;
+  }
+  $('hunt').onclick = () => { if (selected === null || busy) return; $('m-text').textContent = 'GO TO ' + slotName[selected].toUpperCase() + '?'; $('modal').classList.remove('hidden'); };
+  $('m-back').onclick = () => $('modal').classList.add('hidden');
+  $('m-ok').onclick = () => { $('modal').classList.add('hidden'); commit(); };
+
+  function commit(){
+    busy = true;
+    const R = ROUNDS[r], rank = slotRank[selected];
+    const odds = [0,1,2,3,4].map(k => oddsAt(R,k));
+    const best = Math.max(...odds), bestRank = odds.indexOf(best);
+    data.rounds.push({
+      trial:r+1, scenarioId:R.id, type:R.type, comic:R.comic,
+      slotRanks:slotRank.slice(), slotPosted:slotRank.map(k=>R.p[k]), slotCopies:slotRank.map(k=>copiesOf(R,k)), slotNames:slotName.slice(),
+      chosenSlot:selected, chosenShop:slotName[selected], chosenRank:rank, chosenPosted:R.p[rank], chosenCopies:copiesOf(R,rank),
+      chosenOdds:+odds[rank].toFixed(2), bestOdds:+best.toFixed(2), bestRank,
+      highestIsOptimal:bestRank===0, choseHighest:rank===0, choseBest:rank===bestRank,
+      rtMs:Math.round(performance.now()-roundStart), reselections
+    });
+    RE('sendUserInteraction', {event:'choice', ...data.rounds[data.rounds.length-1]});
+    $('hunt').disabled = true; $('g-status').textContent = 'On your way…';
+    travel(selected, () => {
+      r++;
+      if (r < ROUNDS.length) startRound(); else afterRuns();
+    });
+  }
+
+  function travel(slot, done){
+    const layer = $('hunter-layer'); layer.innerHTML = '';
+    const [x2,y2] = SLOTS[slot], [x1,y1] = HOME;
+    // Animate the participant's route; competitors remain stationary offscreen.
+    const movers = [{from:HOME, to:[x2,y2], color:'#ffd23f', you:true}];
+    el('line',{x1,y1,x2,y2,stroke:'#141414','stroke-width':3,'stroke-dasharray':'8 7'},layer);
+    const dots = movers.map(m => { const g = el('g',{},layer);
+      el('circle',{r:m.you?13:10,fill:m.color,stroke:'#141414','stroke-width':3},g);
+      if (m.you){ const t = el('text',{y:4,'text-anchor':'middle','font-family':'Bangers, Impact','font-size':11},g); t.textContent='YOU'; }
+      return g; });
+    const t0 = performance.now(), dur = 1500;
+    (function step(now){
+      const p = Math.min(1,(now-t0)/dur), e = p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+      movers.forEach((m,i) => {
+        const ox = m.you ? 0 : (i-2)*16, oy = m.you ? 0 : -26;
+        const x = m.from[0] + (m.to[0]+ox - m.from[0])*e, y = m.from[1] + (m.to[1]+oy - m.from[1])*e;
+        dots[i].setAttribute('transform', `translate(${x},${y})`);
+      });
+      if (p < 1) requestAnimationFrame(step);
+      else { pow(layer, x2, y2-60); setTimeout(done, 650); }
+    })(t0);
+  }
+  function pow(layer, x, y){
+    const g = el('g',{transform:`translate(${x},${y})`},layer);
+    const pts = []; for (let i=0;i<16;i++){ const a = i*Math.PI/8, rr = i%2?16:34; pts.push(`${(rr*Math.cos(a)).toFixed(1)},${(rr*Math.sin(a)).toFixed(1)}`); }
+    el('polygon',{points:pts.join(' '),fill:'#ffd23f',stroke:'#141414','stroke-width':3},g);
+    const t = el('text',{y:7,'text-anchor':'middle','font-family':'Bangers, Impact','font-size':20,fill:'#e63946'},g); t.textContent = 'POW!';
+  }
+
+  function afterRuns(){ show('s-postquiz'); }
+  function afterPostQuiz(){ if (S.why) show('s-why'); else finish(); }
+  $('why-next').onclick = () => { data.why = $('why-text').value.trim(); finish(); };
+  function finish(){
+    data.trialSummary = {
+      optimalHighestTrials: data.rounds.filter(x=>x.highestIsOptimal).map(x=>x.trial),
+      suboptimalHighestTrials: data.rounds.filter(x=>!x.highestIsOptimal).map(x=>x.trial),
+      highestChosenCount: data.rounds.filter(x=>x.choseHighest).length,
+      optimalChoiceCount: data.rounds.filter(x=>x.choseBest).length
+    };
+    data.finishedAt = new Date().toISOString();
+    window.CHH_DATA = data;
+    $('end-code').textContent = data.sessionCode;
+    show('s-end');
+    RE('sendUserInteraction', {event:'gameComplete', sessionCode:data.sessionCode, cond:data.cond, trialSummary:data.trialSummary});
+    saveData(data).then(ok => {
+      $('end-status').textContent = ok ? 'Your answers were saved. Click CONTINUE.' : 'Click CONTINUE. (If you see this message, please tell the researcher.)';
+      $('end-next').disabled = false;
+    });
+    if (S.debug){ const d = $('debug'); d.textContent = JSON.stringify(data,null,2); $('debug-wrap').classList.remove('hidden'); }
+  }
+
+  /* ---------------- saving ---------------- */
+  function saveData(d){
+    const url = (window.CH_CONFIG||{}).DATA_ENDPOINT;
+    if (!url) { console.warn('No DATA_ENDPOINT set; data not saved to the sheet.'); return Promise.resolve(false); }
+    const send = fetch(url, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(d)})
+      .then(() => true).catch(() => false);
+    const timeout = new Promise(res => setTimeout(() => res(false), 8000));
+    return Promise.race([send, timeout]);
+  }
+  $('end-next').onclick = () => {
+    $('end-next').disabled = true;
+    if (window.reSdk) RE('finishEyeTrackingTest');
+    else $('end-status').textContent = 'Done. (Not running inside RealEye, so there is nowhere to continue to.)';
+  };
+
+  /* ---------------- title art ---------------- */
+  function drawTitleArt(){
+    const svg = $('title-art'); svg.innerHTML = '';
+    el('rect',{width:800,height:300,fill:'#ffd23f'},svg);
+    for (let i=0;i<24;i++){ const a = i*Math.PI/12; el('polygon',{points:`400,150 ${400+900*Math.cos(a)},${150+900*Math.sin(a)} ${400+900*Math.cos(a+Math.PI/24)},${150+900*Math.sin(a+Math.PI/24)}`,fill:'#ffe680'},svg); }
+    // stacked comics
+    [[250,170,-12,'#e63946'],[330,150,6,'#2b6cb0'],[410,165,-4,'#2e9e5b'],[490,150,10,'#e63946'],[570,172,-8,'#3fb8d8']].forEach(([x,y,rot,c],i)=>{
+      const g = el('g',{transform:`translate(${x},${y}) rotate(${rot})`},svg);
+      el('rect',{x:-40,y:-58,width:80,height:116,fill:'#fffdf6',stroke:'#141414','stroke-width':4},g);
+      el('rect',{x:-32,y:-50,width:64,height:28,fill:c,stroke:'#141414','stroke-width':3},g);
+      el('circle',{cx:0,cy:12,r:20,fill:'#ffd23f',stroke:'#141414','stroke-width':3},g);
+      const t = el('text',{x:0,y:19,'text-anchor':'middle','font-family':'Bangers, Impact','font-size':20},g); t.textContent = '#1';
+    });
+    // magnifying glass
+    const m = el('g',{transform:'translate(660,90) rotate(25)'},svg);
+    el('circle',{r:44,fill:'rgba(63,184,216,.35)',stroke:'#141414','stroke-width':7},m);
+    el('rect',{x:-8,y:44,width:16,height:60,rx:5,fill:'#e63946',stroke:'#141414','stroke-width':4},m);
+  }
+})();
+</script>
+</body>
+</html>
