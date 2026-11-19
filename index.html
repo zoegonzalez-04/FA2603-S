@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=Bangers&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
 <!--
   COMIC BOOK HUNTER — five repeated choice trials
-
+ 
   Each of five trials shows the chance each shop has a rare comic in stock. Three collectors always choose
   the highest posted chance. Each shop has one copy; if multiple collectors arrive, one gets it at random.
   Every trial has a top shop posted at 80–95% (a strong lure). Order alternates trap / non-trap / trap / non-trap / trap;
@@ -17,15 +17,18 @@
       95% -> 23.75% vs 31% | 90% -> 22.5% vs 29% | 85% -> 21.25% vs 28%
     Non-trap (top shop still best; wins by ~5 pp), tops similar to or lower than trap tops:
       88% -> 22% vs 17% | 82% -> 20.5% vs 15%
-
+ 
   STANDALONE / REALEYE VERSION (converted from the Qualtrics survey "Comic Hunter Student")
   URL parameters:
-    cond=comp   competition condition (3 rival collectors)   [default]
-    cond=none   no-competition condition
+    (no cond)   condition is assigned at random, 50/50, when the page first loads; the assignment is
+                kept if the page is reloaded in the same browser tab and saved with the data
+    cond=comp   force the competition condition (3 rival collectors), e.g. for the pilot or testing
+    cond=none   force the no-competition condition
     why=1       show the open-ended "How did you decide?" question (off by default, as in Qualtrics)
     debug=1     show the raw data on the end screen
   Data: on completion the data are (1) POSTed to DATA_ENDPOINT below (Google Sheet), (2) sent to RealEye
-  as a user interaction, and (3) shown as a completion code that links the row to the participant.
+  as a user interaction. Participants enter their SONA ID on the end screen; it is saved with the data
+  and links the row to their Qualtrics responses.
 -->
 <script>
   /* ====== CONFIG: paste your Google Apps Script web-app URL here (see README) ====== */
@@ -103,12 +106,15 @@ textarea{width:100%;min-height:110px;border:3px solid var(--ink);padding:10px;fo
 pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--ink);padding:12px;max-height:320px;overflow:auto}
 /* fit the trial screen into the viewport so nothing has to be scrolled during eye tracking */
 #s-game .mapbox{max-width:calc((100vh - 250px) * 800 / 470);margin:0 auto}
+.idform{display:grid;gap:10px;max-width:360px;margin:6px 0 4px}
+.idform label{font-weight:700}
+.idform input{font:700 22px "Roboto Mono",Consolas,monospace;letter-spacing:.06em;padding:8px 12px;border:3px solid var(--ink);background:#fff}
 .code{font:700 34px/1 "Roboto Mono",Consolas,monospace;letter-spacing:.08em;background:#fff;border:3px solid var(--ink);display:inline-block;padding:10px 18px;margin:6px 0 14px}
 </style>
 </head>
 <body>
 <div class="wrap">
-
+ 
   <!-- Title -->
   <section id="s-title" class="card hidden">
     <svg viewBox="0 0 800 300" aria-hidden="true" id="title-art"></svg>
@@ -116,7 +122,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     <p style="font-size:18px">Somewhere in this city, the rarest comics are turning up on dusty shelves. You're a collector, and every night you get one shot to track one down.</p>
     <div class="row"><button class="btn" id="t-go">START THE HUNT</button></div>
   </section>
-
+ 
   <!-- Briefing -->
   <section id="s-brief" class="card hidden">
     <p class="eyebrow">How the hunt works</p>
@@ -144,7 +150,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     </div>
     <div class="row"><button class="btn" id="brief-next">NEXT ▸</button></div>
   </section>
-
+ 
   <!-- Quiz -->
   <section id="s-quiz" class="card hidden">
     <p class="eyebrow">Quick check</p>
@@ -153,14 +159,14 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     <div class="note" id="quiz-note"></div>
     <div class="row"><button class="btn" id="quiz-check">CHECK</button></div>
   </section>
-
+ 
   <section id="s-postquiz" class="card hidden">
     <p class="eyebrow">Quick check</p><h2>AFTER THE HUNT</h2>
     <p>One last check on the rules. Choose the answer that seems right to you.</p>
     <div id="post-quiz-items"></div><div class="note" id="post-quiz-note"></div>
     <div class="row"><button class="btn" id="post-quiz-submit">CONTINUE</button></div>
   </section>
-
+ 
   <!-- Game -->
   <section id="s-game" class="card hidden">
     <div class="competitor-reminder" data-re-aoi-name="competitor-reminder" aria-label="Three other collectors head to the shop with the highest percentage"><div class="competitor-avatars" id="game-rivals" aria-hidden="true"></div><span>3 other collectors head to the highest % shop</span></div>
@@ -174,7 +180,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
       <button class="btn" id="hunt" data-re-aoi-name="hunt-button" disabled>HUNT!</button>
     </div>
   </section>
-
+ 
   <!-- Why -->
   <section id="s-why" class="card hidden">
     <p class="eyebrow">Last question</p>
@@ -183,18 +189,24 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     <textarea id="why-text" maxlength="1500"></textarea>
     <div class="row"><button class="btn" id="why-next">SUBMIT</button></div>
   </section>
-
+ 
   <!-- End -->
   <section id="s-end" class="card hidden">
     <h1 style="font-size:56px">THAT'S A WRAP!</h1>
-    <p style="font-size:18px">Thanks for hunting! Your completion code is:</p>
-    <div class="code" id="end-code">------</div>
-    <p class="muted" id="end-status">Saving your answers…</p>
-    <div class="row" style="justify-content:flex-start"><button class="btn" id="end-next" disabled>CONTINUE ▸</button></div>
+    <p style="font-size:18px">Thanks for hunting! Please enter your SONA ID number so we can match your answers to your survey.</p>
+    <div class="idform" id="id-form">
+      <label for="sona-1">SONA ID number</label>
+      <input id="sona-1" inputmode="numeric" autocomplete="off" maxlength="12">
+      <label for="sona-2">Type it again to confirm</label>
+      <input id="sona-2" inputmode="numeric" autocomplete="off" maxlength="12">
+    </div>
+    <p class="note" id="id-note"></p>
+    <p class="muted" id="end-status"></p>
+    <div class="row" style="justify-content:flex-start"><button class="btn" id="id-submit">SUBMIT</button><button class="btn hidden" id="end-next">CONTINUE ▸</button></div>
     <div id="debug-wrap" class="hidden"><span class="tag">DEBUG DATA · TEST ONLY</span><pre id="debug"></pre></div>
   </section>
 </div>
-
+ 
 <!-- Confirm modal -->
 <div class="modal-bg hidden" id="modal">
   <div class="modal" role="dialog" aria-modal="true">
@@ -203,7 +215,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     <div class="row"><button class="btn ghost" id="m-back">GO BACK</button><button class="btn" id="m-ok">HUNT!</button></div>
   </div>
 </div>
-
+ 
 <script>
 (function(){
   const $ = id => document.getElementById(id);
@@ -217,13 +229,25 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
   
   /* ---------------- settings ---------------- */
   const P = new URLSearchParams(location.search);
+  /* Condition: a cond= URL parameter forces it; otherwise assign 50/50 at random.
+     The random assignment is stored for this browser tab, so a reload keeps the same condition. */
+  function assignCondition(){
+    const forced = P.get('cond');
+    if (forced === 'comp' || forced === 'none') return {cond: forced, source: 'url'};
+    const KEY = 'comicHunterCond';
+    try { const saved = sessionStorage.getItem(KEY); if (saved === 'comp' || saved === 'none') return {cond: saved, source: 'random (kept after reload)'}; } catch(e){}
+    const cond = (crypto.getRandomValues(new Uint8Array(1))[0] & 1) ? 'comp' : 'none';
+    try { sessionStorage.setItem(KEY, cond); } catch(e){}
+    return {cond, source: 'random'};
+  }
+  const ASSIGN = assignCondition();
   const S = {
-    cond: P.get('cond') === 'none' ? 'none' : 'comp', mode: 'all', quiz: true,
+    cond: ASSIGN.cond, condSource: ASSIGN.source, mode: 'all', quiz: true,
     why: P.get('why') === '1',
     debug: P.get('debug') === '1'
   };
   const OTHERS = 3;
-
+ 
   /* The top shop's effective chance is its posted percentage divided by four (you + three others).
      Traps: top shop suboptimal. Non-traps: top shop optimal. */
   const TRAPS = [
@@ -236,24 +260,24 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     {id:'E',type:'nontrap', comic:'Galaxy Gal #1',       p:[82,15,13,11,8]}     // 20.50 vs 15  (top +5.50)
   ];
   let ROUNDS = [];
-
+ 
   const MAP_SHOPS = ['The Golden Age','Bronze Age Books','Speech Bubble','The Back Issue Bin','Kapow Comics'];
   const RIVALS = [{name:'Dex "Mint" Marlowe', color:'#e63946'},{name:'Vera Okafor', color:'#2b6cb0'},{name:'Mo Castellano', color:'#2e9e5b'}];
-
+ 
   /* ---------------- data ---------------- */
   let data, r, roundStart, selected, reselections, slotRank, slotName, busy;
-
+ 
   /* ---------------- setup / start ---------------- */
   function start(){
     ROUNDS = [TRAPS[0], NONTRAPS[0], TRAPS[1], NONTRAPS[1], TRAPS[2]];   // fixed A-D-B-E-C order
     const code = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[b % 31]).join('');
-    data = {sessionCode:code, cond:S.cond, mode:S.mode, userAgent:navigator.userAgent, screen:`${screen.width}x${screen.height}`, viewport:`${innerWidth}x${innerHeight}`, trialCount:ROUNDS.length, startedAt:new Date().toISOString(), quizAttempts:0, quizSubmissions:[], postQuiz:{}, rounds:[]};
+    data = {sessionCode:code, cond:S.cond, condSource:S.condSource, mode:S.mode, userAgent:navigator.userAgent, screen:`${screen.width}x${screen.height}`, viewport:`${innerWidth}x${innerHeight}`, trialCount:ROUNDS.length, startedAt:new Date().toISOString(), quizAttempts:0, quizSubmissions:[], postQuiz:{}, rounds:[]};
     data.trialOrder = ROUNDS.map(x=>x.id);
     r = 0;
     configureBriefing(); buildQuiz(); drawTitleArt();
     show('s-title');
   }
-
+ 
   /* ---------------- briefing ---------------- */
   function configureBriefing(){
     if (S.cond === 'comp') {
@@ -270,14 +294,14 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     }
   }
   let briefShownAt = 0;
-  $('t-go').onclick = () => { show('s-brief'); briefShownAt = performance.now(); };
+  $('t-go').onclick = () => { RE('sendUserInteraction', {event:'assignment', sessionCode:data.sessionCode, cond:S.cond, condSource:S.condSource}); show('s-brief'); briefShownAt = performance.now(); };
   $('brief-next').onclick = () => {
     const hidden = [...document.querySelectorAll('#s-brief [data-step].hidden')];
     if (hidden.length){ hidden[0].classList.remove('hidden'); if (hidden.length === 1) $('brief-next').textContent = 'CONTINUE'; hidden[0].scrollIntoView({behavior:'smooth', block:'nearest'}); return; }
     data.briefingMs = Math.round(performance.now() - briefShownAt);
     show('s-quiz');
   };
-
+ 
   /* ---------------- four-item rule quiz ---------------- */
   function artShop(pct, copies){
     return `<svg viewBox="0 0 120 90"><rect x="22" y="28" width="76" height="46" fill="#fffdf6" stroke="#141414" stroke-width="3"/>
@@ -294,7 +318,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
       <g stroke="#141414" stroke-width="2" fill="none"><path d="M104 18 L56 18"/><path d="M104 46 Q80 40 56 22"/><path d="M104 74 Q80 60 56 24"/></g>
       ${['#e63946','#2b6cb0','#2e9e5b'].map((c,i)=>`<circle cx="108" cy="${18+i*28}" r="8" fill="${c}" stroke="#141414" stroke-width="2"/>`).join('')}</svg>`;
   const artGoal = `<svg viewBox="0 0 120 90"><rect x="38" y="10" width="44" height="62" fill="#fffdf6" stroke="#141414" stroke-width="3"/><rect x="44" y="16" width="32" height="20" fill="#e63946" stroke="#141414" stroke-width="2"/><text x="60" y="52" text-anchor="middle" font-family="Bangers, Impact" font-size="14">#1</text><path d="M50 78 L60 88 L74 70" stroke="#2e9e5b" stroke-width="5" fill="none"/></svg>`;
-
+ 
   const QUIZ = {
     q_pct: {art:artShop('92%'), q:'What does the percentage on each shop show?', a:'in',
       o:[['in','The chance the shop has tonight’s comic in stock'],['mine','Your chance of getting the comic after other collectors arrive'],['cond','How good the condition of the comic is']]},
@@ -336,12 +360,12 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     afterPostQuiz();
   };
   start();
-
+ 
   /* ---------------- odds ---------------- */
   function copiesOf(){ return 1; }
   function collectorsAt(k){ return 1 + (S.cond === 'comp' && k === 0 ? OTHERS : 0); }
   function oddsAt(R, k){ return R.p[k] * Math.min(1, copiesOf(R,k) / collectorsAt(k)); }
-
+ 
   /* ---------------- map ---------------- */
   const HOME = [400, 245];
   /* Original map positions, kept fixed for every trial. */
@@ -399,7 +423,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     g.addEventListener('click', () => pick(slot));
     return g;
   }
-
+ 
   /* ---------------- rounds ---------------- */
   function startRound(){
     show('s-game');
@@ -440,7 +464,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
   $('hunt').onclick = () => { if (selected === null || busy) return; $('m-text').textContent = 'GO TO ' + slotName[selected].toUpperCase() + '?'; $('modal').classList.remove('hidden'); };
   $('m-back').onclick = () => $('modal').classList.add('hidden');
   $('m-ok').onclick = () => { $('modal').classList.add('hidden'); commit(); };
-
+ 
   function commit(){
     busy = true;
     const R = ROUNDS[r], rank = slotRank[selected];
@@ -461,7 +485,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
       if (r < ROUNDS.length) startRound(); else afterRuns();
     });
   }
-
+ 
   function travel(slot, done){
     const layer = $('hunter-layer'); layer.innerHTML = '';
     const [x2,y2] = SLOTS[slot], [x1,y1] = HOME;
@@ -490,7 +514,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     el('polygon',{points:pts.join(' '),fill:'#ffd23f',stroke:'#141414','stroke-width':3},g);
     const t = el('text',{y:7,'text-anchor':'middle','font-family':'Bangers, Impact','font-size':20,fill:'#e63946'},g); t.textContent = 'POW!';
   }
-
+ 
   function afterRuns(){ show('s-postquiz'); }
   function afterPostQuiz(){ if (S.why) show('s-why'); else finish(); }
   $('why-next').onclick = () => { data.why = $('why-text').value.trim(); finish(); };
@@ -503,16 +527,11 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     };
     data.finishedAt = new Date().toISOString();
     window.CHH_DATA = data;
-    $('end-code').textContent = data.sessionCode;
     show('s-end');
-    RE('sendUserInteraction', {event:'gameComplete', sessionCode:data.sessionCode, cond:data.cond, trialSummary:data.trialSummary});
-    saveData(data).then(ok => {
-      $('end-status').textContent = ok ? 'Your answers were saved. Click CONTINUE.' : 'Click CONTINUE. (If you see this message, please tell the researcher.)';
-      $('end-next').disabled = false;
-    });
+    setTimeout(() => $('sona-1').focus(), 50);
     if (S.debug){ const d = $('debug'); d.textContent = JSON.stringify(data,null,2); $('debug-wrap').classList.remove('hidden'); }
   }
-
+ 
   /* ---------------- saving ---------------- */
   function saveData(d){
     const url = (window.CH_CONFIG||{}).DATA_ENDPOINT;
@@ -522,12 +541,28 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     const timeout = new Promise(res => setTimeout(() => res(false), 8000));
     return Promise.race([send, timeout]);
   }
+  $('id-submit').onclick = () => {
+    const a = $('sona-1').value.trim(), b = $('sona-2').value.trim();
+    if (!/^\d{1,12}$/.test(a)) { $('id-note').textContent = 'Please enter your SONA ID using numbers only.'; return; }
+    if (a !== b) { $('id-note').textContent = 'The two entries don\'t match. Please check and try again.'; return; }
+    $('id-note').textContent = '';
+    data.sonaId = a; data.idEnteredAt = new Date().toISOString();
+    $('id-submit').disabled = true; $('sona-1').disabled = true; $('sona-2').disabled = true;
+    $('end-status').textContent = 'Saving your answers…';
+    RE('sendUserInteraction', {event:'gameComplete', sonaId:data.sonaId, sessionCode:data.sessionCode, cond:data.cond, trialSummary:data.trialSummary});
+    if (S.debug){ $('debug').textContent = JSON.stringify(data,null,2); }
+    saveData(data).then(ok => {
+      $('end-status').textContent = ok ? 'Your answers were saved. Click CONTINUE.' : 'Click CONTINUE. (If you see this message, please tell the researcher.)';
+      $('id-submit').classList.add('hidden'); $('end-next').classList.remove('hidden');
+    });
+  };
+  ['sona-1','sona-2'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); id === 'sona-1' ? $('sona-2').focus() : $('id-submit').click(); } }));
   $('end-next').onclick = () => {
     $('end-next').disabled = true;
     if (window.reSdk) RE('finishEyeTrackingTest');
     else $('end-status').textContent = 'Done. (Not running inside RealEye, so there is nowhere to continue to.)';
   };
-
+ 
   /* ---------------- title art ---------------- */
   function drawTitleArt(){
     const svg = $('title-art'); svg.innerHTML = '';
