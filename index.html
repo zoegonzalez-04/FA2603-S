@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=Bangers&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
 <!--
   COMIC BOOK HUNTER — five repeated choice trials
- 
+
   Each of five trials shows the chance each shop has a rare comic in stock. Three collectors always choose
   the highest posted chance. Each shop has one copy; if multiple collectors arrive, one gets it at random.
   Every trial has a top shop posted at 80–95% (a strong lure). Order alternates trap / non-trap / trap / non-trap / trap;
@@ -17,7 +17,7 @@
       95% -> 23.75% vs 31% | 90% -> 22.5% vs 29% | 85% -> 21.25% vs 28%
     Non-trap (top shop still best; wins by ~5 pp), tops similar to or lower than trap tops:
       88% -> 22% vs 17% | 82% -> 20.5% vs 15%
- 
+
   STANDALONE / REALEYE VERSION (converted from the Qualtrics survey "Comic Hunter Student")
   URL parameters:
     (no cond)   condition is assigned at random, 50/50, when the page first loads; the assignment is
@@ -114,7 +114,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
 </head>
 <body>
 <div class="wrap">
- 
+
   <!-- Title -->
   <section id="s-title" class="card hidden">
     <svg viewBox="0 0 800 300" aria-hidden="true" id="title-art"></svg>
@@ -122,35 +122,35 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     <p style="font-size:18px">Somewhere in this city, the rarest comics are turning up on dusty shelves. You're a collector, and every night you get one shot to track one down.</p>
     <div class="row"><button class="btn" id="t-go">START THE HUNT</button></div>
   </section>
- 
+
   <!-- Briefing -->
   <section id="s-brief" class="card hidden">
     <p class="eyebrow">How the hunt works</p>
     <h2>YOUR BRIEFING</h2>
-    <div class="brief-block" data-step data-re-aoi-name="brief-hunt"><span class="cap">THE HUNT</span>
+    <div class="brief-block" data-step><span class="cap">THE HUNT</span>
       <p>Each night, one rare comic is out there. You can visit <b>one shop</b> to try to get it. Your goal is to <b>give yourself the best chance of getting the comic</b>.</p>
     </div>
-    <div class="brief-block hidden" data-step data-re-aoi-name="brief-map"><span class="cap">THE MAP</span>
+    <div class="brief-block hidden" data-step><span class="cap">THE MAP</span>
       <p>You'll see a map of five comic shops. Each shop shows the <b>chance it has tonight's comic in stock</b>.</p>
       <p>Each shop has <b>one copy</b>.</p>
     </div>
-    <div class="brief-block comp hidden" data-step id="b-comp" data-re-aoi-name="brief-competition"><span class="cap">OTHER COLLECTORS ARE HUNTING TOO</span>
+    <div class="brief-block comp hidden" data-step id="b-comp"><span class="cap">OTHER COLLECTORS ARE HUNTING TOO</span>
       <div class="rivals" id="rivals"></div>
       <p>Three other collectors hunt the same comic every night. They <b>always go to the shop with the highest chance</b>.</p>
       <p>If you go to the same shop as other collectors and it has the comic, the one copy goes to <b>one of you, chosen at random</b>. You might get it, or one of them might.</p>
     </div>
-    <div class="brief-block hidden" data-step id="b-no-comp" data-re-aoi-name="brief-no-competition"><span class="cap">NO OTHER COLLECTORS</span>
+    <div class="brief-block hidden" data-step id="b-no-comp"><span class="cap">NO OTHER COLLECTORS</span>
       <p>You're the only collector hunting tonight. No one else will visit any of the shops.</p>
     </div>
-    <div class="brief-block hidden" data-step id="b-fb" data-re-aoi-name="brief-five-trials"><span class="cap">FIVE TRIALS</span>
+    <div class="brief-block hidden" data-step id="b-fb"><span class="cap">FIVE TRIALS</span>
       <p>You'll make one choice in each of five trials. You won't see a result between trials.</p>
     </div>
-    <div class="brief-block hidden" data-step data-re-aoi-name="brief-how-to-play"><span class="cap">HOW TO PLAY</span>
+    <div class="brief-block hidden" data-step><span class="cap">HOW TO PLAY</span>
       <p>Click a shop to select it, then press <b>HUNT!</b></p>
     </div>
     <div class="row"><button class="btn" id="brief-next">NEXT ▸</button></div>
   </section>
- 
+
   <!-- Quiz -->
   <section id="s-quiz" class="card hidden">
     <p class="eyebrow">Quick check</p>
@@ -159,28 +159,28 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     <div class="note" id="quiz-note"></div>
     <div class="row"><button class="btn" id="quiz-check">CHECK</button></div>
   </section>
- 
+
   <section id="s-postquiz" class="card hidden">
     <p class="eyebrow">Quick check</p><h2>AFTER THE HUNT</h2>
     <p>One last check on the rules. Choose the answer that seems right to you.</p>
     <div id="post-quiz-items"></div><div class="note" id="post-quiz-note"></div>
     <div class="row"><button class="btn" id="post-quiz-submit">CONTINUE</button></div>
   </section>
- 
+
   <!-- Game -->
   <section id="s-game" class="card hidden">
     <div class="competitor-reminder" data-re-aoi-name="competitor-reminder" aria-label="Three other collectors head to the shop with the highest percentage"><div class="competitor-avatars" id="game-rivals" aria-hidden="true"></div><span>3 other collectors head to the highest % shop</span></div>
     <div class="head">
-      <div><p class="eyebrow" id="g-round">Night 1 of 5</p><h2 id="g-title" data-re-aoi-name="trial-title" style="margin:0">TONIGHT: …</h2></div>
+      <div><p class="eyebrow" id="g-round">Night 1 of 5</p><h2 id="g-title" style="margin:0">TONIGHT: …</h2></div>
       <span class="pill" id="g-sel">No shop selected</span>
     </div>
     <div class="mapbox"><svg id="map" viewBox="0 0 800 470" role="img" aria-label="City map with five comic shops"></svg></div>
     <div class="row" style="justify-content:space-between">
       <div class="status" id="g-status"></div>
-      <button class="btn" id="hunt" data-re-aoi-name="hunt-button" disabled>HUNT!</button>
+      <button class="btn" id="hunt" disabled>HUNT!</button>
     </div>
   </section>
- 
+
   <!-- Why -->
   <section id="s-why" class="card hidden">
     <p class="eyebrow">Last question</p>
@@ -189,11 +189,11 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     <textarea id="why-text" maxlength="1500"></textarea>
     <div class="row"><button class="btn" id="why-next">SUBMIT</button></div>
   </section>
- 
+
   <!-- End -->
   <section id="s-end" class="card hidden">
     <h1 style="font-size:56px">THAT'S A WRAP!</h1>
-    <p style="font-size:18px">Thanks for hunting! Please enter the SONA ID number on the card given to you by the RA.</p>
+    <p style="font-size:18px">Thanks for hunting! Please enter your the Sona ID on the card given to you by the RA.</p>
     <div class="idform" id="id-form">
       <label for="sona-1">SONA ID number</label>
       <input id="sona-1" inputmode="numeric" autocomplete="off" maxlength="12">
@@ -206,7 +206,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     <div id="debug-wrap" class="hidden"><span class="tag">DEBUG DATA · TEST ONLY</span><pre id="debug"></pre></div>
   </section>
 </div>
- 
+
 <!-- Confirm modal -->
 <div class="modal-bg hidden" id="modal">
   <div class="modal" role="dialog" aria-modal="true">
@@ -215,7 +215,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     <div class="row"><button class="btn ghost" id="m-back">GO BACK</button><button class="btn" id="m-ok">HUNT!</button></div>
   </div>
 </div>
- 
+
 <script>
 (function(){
   const $ = id => document.getElementById(id);
@@ -247,7 +247,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     debug: P.get('debug') === '1'
   };
   const OTHERS = 3;
- 
+
   /* The top shop's effective chance is its posted percentage divided by four (you + three others).
      Traps: top shop suboptimal. Non-traps: top shop optimal. */
   const TRAPS = [
@@ -260,13 +260,13 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     {id:'E',type:'nontrap', comic:'Galaxy Gal #1',       p:[82,15,13,11,8]}     // 20.50 vs 15  (top +5.50)
   ];
   let ROUNDS = [];
- 
+
   const MAP_SHOPS = ['The Golden Age','Bronze Age Books','Speech Bubble','The Back Issue Bin','Kapow Comics'];
   const RIVALS = [{name:'Dex "Mint" Marlowe', color:'#e63946'},{name:'Vera Okafor', color:'#2b6cb0'},{name:'Mo Castellano', color:'#2e9e5b'}];
- 
+
   /* ---------------- data ---------------- */
   let data, r, roundStart, selected, reselections, slotRank, slotName, busy;
- 
+
   /* ---------------- setup / start ---------------- */
   function start(){
     ROUNDS = [TRAPS[0], NONTRAPS[0], TRAPS[1], NONTRAPS[1], TRAPS[2]];   // fixed A-D-B-E-C order
@@ -277,7 +277,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     configureBriefing(); buildQuiz(); drawTitleArt();
     show('s-title');
   }
- 
+
   /* ---------------- briefing ---------------- */
   function configureBriefing(){
     if (S.cond === 'comp') {
@@ -301,7 +301,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     data.briefingMs = Math.round(performance.now() - briefShownAt);
     show('s-quiz');
   };
- 
+
   /* ---------------- four-item rule quiz ---------------- */
   function artShop(pct, copies){
     return `<svg viewBox="0 0 120 90"><rect x="22" y="28" width="76" height="46" fill="#fffdf6" stroke="#141414" stroke-width="3"/>
@@ -318,7 +318,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
       <g stroke="#141414" stroke-width="2" fill="none"><path d="M104 18 L56 18"/><path d="M104 46 Q80 40 56 22"/><path d="M104 74 Q80 60 56 24"/></g>
       ${['#e63946','#2b6cb0','#2e9e5b'].map((c,i)=>`<circle cx="108" cy="${18+i*28}" r="8" fill="${c}" stroke="#141414" stroke-width="2"/>`).join('')}</svg>`;
   const artGoal = `<svg viewBox="0 0 120 90"><rect x="38" y="10" width="44" height="62" fill="#fffdf6" stroke="#141414" stroke-width="3"/><rect x="44" y="16" width="32" height="20" fill="#e63946" stroke="#141414" stroke-width="2"/><text x="60" y="52" text-anchor="middle" font-family="Bangers, Impact" font-size="14">#1</text><path d="M50 78 L60 88 L74 70" stroke="#2e9e5b" stroke-width="5" fill="none"/></svg>`;
- 
+
   const QUIZ = {
     q_pct: {art:artShop('92%'), q:'What does the percentage on each shop show?', a:'in',
       o:[['in','The chance the shop has tonight’s comic in stock'],['mine','Your chance of getting the comic after other collectors arrive'],['cond','How good the condition of the comic is']]},
@@ -360,12 +360,12 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     afterPostQuiz();
   };
   start();
- 
+
   /* ---------------- odds ---------------- */
   function copiesOf(){ return 1; }
   function collectorsAt(k){ return 1 + (S.cond === 'comp' && k === 0 ? OTHERS : 0); }
   function oddsAt(R, k){ return R.p[k] * Math.min(1, copiesOf(R,k) / collectorsAt(k)); }
- 
+
   /* ---------------- map ---------------- */
   const HOME = [400, 245];
   /* Original map positions, kept fixed for every trial. */
@@ -397,15 +397,25 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     el('circle',{cx:2,cy:2,r:1.1,fill:'#141414',opacity:.07},pat);
     el('rect',{width:800,height:470,fill:'url(#dots)'},svg);
     // home
-    const h = el('g',{'data-re-aoi-name':'your-place',transform:`translate(${HOME[0]},${HOME[1]})`},svg);
+    const h = el('g',{transform:`translate(${HOME[0]},${HOME[1]})`},svg);
     el('polygon',{points:'-22,-4 0,-24 22,-4',fill:'#e63946',stroke:'#141414','stroke-width':3},h);
     el('rect',{x:-17,y:-4,width:34,height:26,fill:'#fffdf6',stroke:'#141414','stroke-width':3},h);
     el('rect',{x:-5,y:6,width:10,height:16,fill:'#2b6cb0',stroke:'#141414','stroke-width':2},h);
     const lab = el('text',{x:0,y:40,'text-anchor':'middle','font-family':'Bangers, Impact','font-size':15,fill:'#141414'},h); lab.textContent = 'YOUR PLACE';
   }
+  /* Eye-tracking AOIs: one fixed, equal-size box (220 x 150 map units) centred on each shop.
+     Boxes never move, so the same rectangles apply on every trial. Letters follow the map position:
+     A top-left, B top-right, C bottom-right, D bottom-middle, E bottom-left (= map slots 0-4). */
+  const BOX_LETTERS = ['A','B','C','D','E'];
+  const AOI_W = 220, AOI_H = 150;
+  function drawAoiBoxes(svg){
+    const layer = el('g',{id:'aoi-layer','pointer-events':'none'},svg);
+    SLOTS.forEach(([x,y],i) => el('rect',{x:x-AOI_W/2, y:(y+8)-AOI_H/2, width:AOI_W, height:AOI_H,
+      fill:'transparent', stroke:S.debug?'#e63946':'none', 'stroke-dasharray':'6 4', 'data-re-aoi-name':`shop-area-${BOX_LETTERS[i]}`}, layer));
+  }
   function drawShop(svg, slot, s){
     const [x,y] = SLOTS[slot], R = ROUNDS[r], rank = slotRank[slot];
-    const g = el('g',{class:'shop','data-slot':slot,'data-re-aoi-name':`shop-rank${rank+1}`,transform:`translate(${x},${y})`},svg);
+    const g = el('g',{class:'shop','data-slot':slot,transform:`translate(${x},${y})`},svg);
     el('rect',{x:-64,y:-52,width:128,height:104,fill:'transparent'},g);   // hit area
     // storefront
     el('rect',{x:-30,y:-30,width:60,height:36,fill:'#fffdf6',stroke:'#141414','stroke-width':3},g);
@@ -423,7 +433,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     g.addEventListener('click', () => pick(slot));
     return g;
   }
- 
+
   /* ---------------- rounds ---------------- */
   function startRound(){
     show('s-game');
@@ -446,6 +456,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     $('hunt').disabled = true;
     const svg = $('map'); drawCity(svg);
     slotName.forEach((n,i) => drawShop(svg, i, n));
+    drawAoiBoxes(svg);
     el('g',{id:'hunter-layer'},svg);
     roundStart = performance.now();
   }
@@ -464,7 +475,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
   $('hunt').onclick = () => { if (selected === null || busy) return; $('m-text').textContent = 'GO TO ' + slotName[selected].toUpperCase() + '?'; $('modal').classList.remove('hidden'); };
   $('m-back').onclick = () => $('modal').classList.add('hidden');
   $('m-ok').onclick = () => { $('modal').classList.add('hidden'); commit(); };
- 
+
   function commit(){
     busy = true;
     const R = ROUNDS[r], rank = slotRank[selected];
@@ -476,6 +487,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
       chosenSlot:selected, chosenShop:slotName[selected], chosenRank:rank, chosenPosted:R.p[rank], chosenCopies:copiesOf(R,rank),
       chosenOdds:+odds[rank].toFixed(2), bestOdds:+best.toFixed(2), bestRank,
       highestIsOptimal:bestRank===0, choseHighest:rank===0, choseBest:rank===bestRank,
+      highestBox:BOX_LETTERS[slotRank.indexOf(0)], optimalBox:BOX_LETTERS[slotRank.indexOf(bestRank)], chosenBox:BOX_LETTERS[selected],
       rtMs:Math.round(performance.now()-roundStart), reselections
     });
     RE('sendUserInteraction', {event:'choice', ...data.rounds[data.rounds.length-1]});
@@ -485,7 +497,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
       if (r < ROUNDS.length) startRound(); else afterRuns();
     });
   }
- 
+
   function travel(slot, done){
     const layer = $('hunter-layer'); layer.innerHTML = '';
     const [x2,y2] = SLOTS[slot], [x1,y1] = HOME;
@@ -514,7 +526,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     el('polygon',{points:pts.join(' '),fill:'#ffd23f',stroke:'#141414','stroke-width':3},g);
     const t = el('text',{y:7,'text-anchor':'middle','font-family':'Bangers, Impact','font-size':20,fill:'#e63946'},g); t.textContent = 'POW!';
   }
- 
+
   function afterRuns(){ show('s-postquiz'); }
   function afterPostQuiz(){ if (S.why) show('s-why'); else finish(); }
   $('why-next').onclick = () => { data.why = $('why-text').value.trim(); finish(); };
@@ -531,7 +543,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     setTimeout(() => $('sona-1').focus(), 50);
     if (S.debug){ const d = $('debug'); d.textContent = JSON.stringify(data,null,2); $('debug-wrap').classList.remove('hidden'); }
   }
- 
+
   /* ---------------- saving ---------------- */
   function saveData(d){
     const url = (window.CH_CONFIG||{}).DATA_ENDPOINT;
@@ -562,7 +574,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     if (window.reSdk) RE('finishEyeTrackingTest');
     else $('end-status').textContent = 'Done. (Not running inside RealEye, so there is nowhere to continue to.)';
   };
- 
+
   /* ---------------- title art ---------------- */
   function drawTitleArt(){
     const svg = $('title-art'); svg.innerHTML = '';
