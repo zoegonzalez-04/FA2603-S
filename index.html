@@ -116,7 +116,9 @@ svg{display:block;width:100%;height:auto}
 textarea{width:100%;min-height:110px;border:3px solid var(--ink);padding:10px;font:16px var(--body)}
 pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--ink);padding:12px;max-height:320px;overflow:auto}
 /* fit the trial screen into the viewport so nothing has to be scrolled during eye tracking */
-#s-game .mapbox{max-width:calc((100vh - 250px) * 800 / 470);margin:0 auto}
+/* Trial screen: same layout as before, just zoomed in to fill as much of the window as possible (see fitGame). */
+body.game-on .wrap{max-width:none;padding:12px;display:flex;justify-content:center}
+#s-game{width:868px;flex:0 0 auto}
 .idform{display:grid;gap:10px;max-width:360px;margin:6px 0 4px}
 .idform label{font-weight:700}
 .idform input{font:700 22px "Roboto Mono",Consolas,monospace;letter-spacing:.06em;padding:8px 12px;border:3px solid var(--ink);background:#fff}
@@ -239,7 +241,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
   function setStim(key){ const id = window.chStimId(key) || window.chStimId('main'); if (id) RE('setStimulusId', id); }  // missing trial ID -> fall back to main, so it never lands in the previous trial's item
   function RE(method, arg){ try { if (window.reSdk && typeof window.reSdk[method] === 'function') window.reSdk[method](arg); } catch(e){ console.warn('RealEye', method, e); } }
   /* Each screen (title, briefing, quiz, trial 1-5, post-quiz, end) is logged as a new RealEye exposure. */
-  function show(id){ document.querySelectorAll('section').forEach(s=>s.classList.add('hidden')); $(id).classList.remove('hidden'); window.scrollTo(0,0);
+  function show(id){ document.body.classList.toggle('game-on', id === 's-game'); document.querySelectorAll('section').forEach(s=>s.classList.add('hidden')); $(id).classList.remove('hidden'); window.scrollTo(0,0);
     requestAnimationFrame(() => RE('startNextExposure')); }
   
   /* ---------------- settings ---------------- */
@@ -450,6 +452,15 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
   }
 
   /* ---------------- rounds ---------------- */
+  // Zoom the whole trial card (layout unchanged) so it fills the window without scrolling.
+  function fitGame(){
+    const c = $('s-game'); c.style.zoom = 1;
+    if (c.classList.contains('hidden')) return;
+    const w = c.offsetWidth + 7, h = c.offsetHeight + 7;            // +7 = the card's drop shadow
+    const z = Math.min((innerWidth - 24) / w, (innerHeight - 24) / h);
+    c.style.zoom = Math.floor(z * 1000) / 1000;   // shrinks on small screens too, so nothing scrolls
+  }
+  addEventListener('resize', fitGame);
   function startRound(){
     setStim('t'+(r+1));          // switch RealEye to this trial's hidden item BEFORE the new exposure starts
     show('s-game');
@@ -476,6 +487,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     slotName.forEach((n,i) => drawShop(svg, i, n));
     drawAoiBoxes(svg);
     el('g',{id:'hunter-layer'},svg);
+    fitGame();
     roundStart = performance.now();
   }
   function pick(slot){
