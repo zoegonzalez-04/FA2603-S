@@ -33,14 +33,25 @@
 <script>
   /* ====== CONFIG: paste your Google Apps Script web-app URL here (see README) ====== */
   window.CH_CONFIG = {
-    DATA_ENDPOINT: 'https://script.google.com/macros/s/AKfycbxUYBp15PzBPfAknSV0Y-Gr2-jW57OnpgSrBg9dJKaIuidgUz-e6jx6yQhB_1pF0riw/exec'
+    DATA_ENDPOINT: 'https://script.google.com/macros/s/AKfycbxUYBp15PzBPfAknSV0Y-Gr2-jW57OnpgSrBg9dJKaIuidgUz-e6jx6yQhB_1pF0riw/exec',
+
+    /* RealEye item (stimulus) UUIDs, one set per RealEye study.
+       main  = the visible Embedded Website item (title, briefing, quiz, post-quiz, end screens)
+       t1-t5 = the five HIDDEN copies of the same item (eye icon), one per trial -> one heatmap per trial
+       Copy each UUID from RealEye (Study setup -> item -> Stimulus UUID). Leave '' to skip. */
+    STIMULUS_IDS: {
+      comp: { main:'', t1:'', t2:'', t3:'', t4:'', t5:'' },   // Competition study
+      none: { main:'', t1:'', t2:'', t3:'', t4:'', t5:'' }    // No-competition study
+    }
   };
 </script>
 <!-- RealEye embedded-website SDK. It only activates when the page is opened inside a RealEye study. -->
 <script type="module">
   import EmbeddedPageSdk from "https://app.realeye.io/sdk/js/testRunnerEmbeddableSdk-latest.js";
   function initRealEye(){
-    try { window.reSdk = new EmbeddedPageSdk(false, null, false); }
+    // Start under the 'main' item of this participant's condition (null if not filled in).
+    const main = (window.chStimId && window.chStimId('main')) || null;
+    try { window.reSdk = new EmbeddedPageSdk(false, main, false); }
     catch (e) { console.warn('RealEye SDK not started:', e); }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initRealEye);
@@ -193,7 +204,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
   <!-- End -->
   <section id="s-end" class="card hidden">
     <h1 style="font-size:56px">THAT'S A WRAP!</h1>
-    <p style="font-size:18px">Thanks for hunting! Please enter your the Sona ID on the card given to you by the RA.</p>
+    <p style="font-size:18px">Thanks for hunting! Please enter your SONA ID number so we can match your answers to your survey.</p>
     <div class="idform" id="id-form">
       <label for="sona-1">SONA ID number</label>
       <input id="sona-1" inputmode="numeric" autocomplete="off" maxlength="12">
@@ -222,6 +233,10 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
   const NS = 'http://www.w3.org/2000/svg';
   function el(tag, attrs, parent){ const e=document.createElementNS(NS,tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
   /* RealEye: call an SDK method only if the SDK is running (i.e., inside a RealEye study) */
+  // Looks up the RealEye item UUID for this participant's condition ('main', 't1'...'t5').
+  window.chStimId = key => { try { const c = (typeof S !== 'undefined') ? S.cond : null;
+    return (((window.CH_CONFIG||{}).STIMULUS_IDS||{})[c]||{})[key] || ''; } catch(e){ return ''; } };
+  function setStim(key){ const id = window.chStimId(key); if (id) RE('setStimulusId', id); }
   function RE(method, arg){ try { if (window.reSdk && typeof window.reSdk[method] === 'function') window.reSdk[method](arg); } catch(e){ console.warn('RealEye', method, e); } }
   /* Each screen (title, briefing, quiz, trial 1-5, post-quiz, end) is logged as a new RealEye exposure. */
   function show(id){ document.querySelectorAll('section').forEach(s=>s.classList.add('hidden')); $(id).classList.remove('hidden'); window.scrollTo(0,0);
@@ -411,7 +426,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
   function drawAoiBoxes(svg){
     const layer = el('g',{id:'aoi-layer','pointer-events':'none'},svg);
     SLOTS.forEach(([x,y],i) => el('rect',{x:x-AOI_W/2, y:(y+8)-AOI_H/2, width:AOI_W, height:AOI_H,
-      fill:'transparent', stroke:S.debug?'#e63946':'none', 'stroke-dasharray':'6 4', 'data-re-aoi-name':`shop-area-${BOX_LETTERS[i]}`}, layer));
+      fill:'transparent', stroke:S.debug?'#e63946':'none', 'stroke-dasharray':'6 4', 'data-re-aoi-name':`t${r+1}-shop-area-${BOX_LETTERS[i]}`}, layer));
   }
   function drawShop(svg, slot, s){
     const [x,y] = SLOTS[slot], R = ROUNDS[r], rank = slotRank[slot];
@@ -436,7 +451,10 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
 
   /* ---------------- rounds ---------------- */
   function startRound(){
+    setStim('t'+(r+1));          // switch RealEye to this trial's hidden item BEFORE the new exposure starts
     show('s-game');
+    const rem = document.querySelector('.competitor-reminder');
+    if (rem) rem.setAttribute('data-re-aoi-name', `t${r+1}-competitor-reminder`);
     const R = ROUNDS[r];
     selected = null; reselections = 0; busy = false;
     const layout = ROLE_LAYOUT[r];
@@ -527,7 +545,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
     const t = el('text',{y:7,'text-anchor':'middle','font-family':'Bangers, Impact','font-size':20,fill:'#e63946'},g); t.textContent = 'POW!';
   }
 
-  function afterRuns(){ show('s-postquiz'); }
+  function afterRuns(){ setStim('main'); show('s-postquiz'); }
   function afterPostQuiz(){ if (S.why) show('s-why'); else finish(); }
   $('why-next').onclick = () => { data.why = $('why-text').value.trim(); finish(); };
   function finish(){
