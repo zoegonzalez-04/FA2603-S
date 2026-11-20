@@ -40,7 +40,7 @@
        t1-t5 = the five HIDDEN copies of the same item (eye icon), one per trial -> one heatmap per trial
        Copy each UUID from RealEye (Study setup -> item -> Stimulus UUID). Leave '' to skip. */
     STIMULUS_IDS: {
-      comp: { main:'', t1:'', t2:'', t3:'', t4:'', t5:'' },   // Competition study
+      comp: { main:'164d7bc8-10d5-4b54-9e7c-784a8cbcb879', t1:'14acce60-4b3c-4d5f-92e5-10151572a25f', t2:'38d448d3-ce9a-4960-a964-fe0355267569', t3:'1f80eea5-3b22-4691-bc7f-5f1acfb8bc73', t4:'9116c826-f902-4c9a-94ff-e675f530f56f', t5:'d438a364-d190-438a-861f-fb53acfa9b2e' },   // Competition study
       none: { main:'', t1:'', t2:'', t3:'', t4:'', t5:'' }    // No-competition study
     }
   };
@@ -236,7 +236,7 @@ pre{white-space:pre-wrap;font-size:11px;background:#fff;border:2px solid var(--i
   // Looks up the RealEye item UUID for this participant's condition ('main', 't1'...'t5').
   window.chStimId = key => { try { const c = (typeof S !== 'undefined') ? S.cond : null;
     return (((window.CH_CONFIG||{}).STIMULUS_IDS||{})[c]||{})[key] || ''; } catch(e){ return ''; } };
-  function setStim(key){ const id = window.chStimId(key); if (id) RE('setStimulusId', id); }
+  function setStim(key){ const id = window.chStimId(key) || window.chStimId('main'); if (id) RE('setStimulusId', id); }  // missing trial ID -> fall back to main, so it never lands in the previous trial's item
   function RE(method, arg){ try { if (window.reSdk && typeof window.reSdk[method] === 'function') window.reSdk[method](arg); } catch(e){ console.warn('RealEye', method, e); } }
   /* Each screen (title, briefing, quiz, trial 1-5, post-quiz, end) is logged as a new RealEye exposure. */
   function show(id){ document.querySelectorAll('section').forEach(s=>s.classList.add('hidden')); $(id).classList.remove('hidden'); window.scrollTo(0,0);
