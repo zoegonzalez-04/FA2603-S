@@ -423,8 +423,8 @@ body.game-on .wrap{max-width:none;padding:12px;display:flex;justify-content:cent
   /* Eye-tracking AOIs (Option 3), drawn fresh on every trial in map units (map = 800 x 470):
      - t#-highest : 2 x 2 city-block box around the highest-% shop
      - t#-optimal : 2 x 2 city-block box around the optimal shop (Competition trap trials only, when it is a different shop)
-       (when the highest shop IS the optimal one, it is named t#-highest-optimal in Competition)
-     - t#-other-1, -2, ... : the rest of the map (incl. home and park) split into rectangles (numbered top-to-bottom, left-to-right)
+       (Competition only; when the highest shop IS the optimal one, that box is tagged with both names)
+     - t#-other : the rest of the map (incl. home and park), split into rectangles that all share this one name
      Shop letters (A top-left, B top-right, C bottom-right, D bottom-middle, E bottom-left) are still saved in the data. */
   const BOX_LETTERS = ['A','B','C','D','E'];
   const MAP_W = 800, MAP_H = 470;
@@ -466,10 +466,13 @@ body.game-on .wrap{max-width:none;padding:12px;display:flex;justify-content:cent
   }
   function buildAois(highestSlot, optimalSlot){
     const t = `t${r+1}`, list = [];
-    const same = highestSlot === optimalSlot;
-    list.push({name: same && S.cond === 'comp' ? `${t}-highest-optimal` : `${t}-highest`, slot: highestSlot, ...shopBox(highestSlot)});
-    if (!same) list.push({name:`${t}-optimal`, slot: optimalSlot, ...shopBox(optimalSlot)});
-    otherRects(list.map(a => a)).forEach((b,i) => list.push({name:`${t}-other-${i+1}`, ...b}));
+    list.push({name:`${t}-highest`, slot: highestSlot, ...shopBox(highestSlot)});
+    // Competition: always tag an optimal AOI. When the optimal shop IS the highest shop, the same box is tagged twice
+    // (t#-highest and t#-optimal on top of each other), so both AOIs get that shop's gaze.
+    if (S.cond === 'comp') list.push({name:`${t}-optimal`, slot: optimalSlot, ...shopBox(optimalSlot)});
+    const holes = [shopBox(highestSlot)]; if (optimalSlot !== highestSlot) holes.push(shopBox(optimalSlot));
+    // Everything else on the map shares ONE name, t#-other (RealEye combines all rectangles with that name).
+    otherRects(holes).forEach(b => list.push({name:`${t}-other`, ...b}));
     return list;
   }
   function drawAoiBoxes(svg, aois){
@@ -479,7 +482,8 @@ body.game-on .wrap{max-width:none;padding:12px;display:flex;justify-content:cent
       el('rect',{x:a.x, y:a.y, width:a.w, height:a.h, fill: S.debug ? (shop ? 'rgba(230,57,70,.10)' : 'rgba(43,108,176,.06)') : 'transparent',
         stroke: S.debug ? (shop ? '#e63946' : '#2b6cb0') : 'none', 'stroke-width': shop ? 3 : 2, 'stroke-dasharray': shop ? '' : '6 4',
         'data-re-aoi-name': a.name}, layer);
-      if (S.debug){ const tx = el('text',{x:a.x+6, y:a.y+16, 'font-family':'Arial', 'font-size':13, 'font-weight':700,
+      if (S.debug){ const stacked = /-optimal$/.test(a.name) && aois.some(o => /-highest$/.test(o.name) && o.x===a.x && o.y===a.y);
+        const tx = el('text',{x:a.x+6, y:a.y+(stacked?32:16), 'font-family':'Arial', 'font-size':13, 'font-weight':700,
         fill: shop ? '#e63946' : '#2b6cb0'}, layer); tx.textContent = a.name; }
     });
   }
