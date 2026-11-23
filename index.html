@@ -423,7 +423,7 @@ body.game-on .wrap{max-width:none;padding:12px;display:flex;justify-content:cent
   /* Eye-tracking AOIs (Option 3), drawn fresh on every trial in map units (map = 800 x 470):
      - t#-highest : 2 x 2 city-block box around the highest-% shop
      - t#-optimal : 2 x 2 city-block box around the optimal shop (Competition trap trials only, when it is a different shop)
-       (Competition only; when the highest shop IS the optimal one, that box is tagged with both names)
+       (Competition trap trials only; on non-trap trials the highest shop is also the optimal one, so only t#-highest)
      - t#-other : the rest of the map (incl. home and park), split into rectangles that all share this one name
      Shop letters (A top-left, B top-right, C bottom-right, D bottom-middle, E bottom-left) are still saved in the data. */
   const BOX_LETTERS = ['A','B','C','D','E'];
@@ -467,9 +467,9 @@ body.game-on .wrap{max-width:none;padding:12px;display:flex;justify-content:cent
   function buildAois(highestSlot, optimalSlot){
     const t = `t${r+1}`, list = [];
     list.push({name:`${t}-highest`, slot: highestSlot, ...shopBox(highestSlot)});
-    // Competition: always tag an optimal AOI. When the optimal shop IS the highest shop, the same box is tagged twice
-    // (t#-highest and t#-optimal on top of each other), so both AOIs get that shop's gaze.
-    if (S.cond === 'comp') list.push({name:`${t}-optimal`, slot: optimalSlot, ...shopBox(optimalSlot)});
+    // Competition trap trials only: separate optimal AOI. On non-trap trials the optimal shop IS the highest shop,
+    // so there is just t#-highest.
+    if (S.cond === 'comp' && optimalSlot !== highestSlot) list.push({name:`${t}-optimal`, slot: optimalSlot, ...shopBox(optimalSlot)});
     const holes = [shopBox(highestSlot)]; if (optimalSlot !== highestSlot) holes.push(shopBox(optimalSlot));
     // Everything else on the map shares ONE name, t#-other (RealEye combines all rectangles with that name).
     otherRects(holes).forEach(b => list.push({name:`${t}-other`, ...b}));
