@@ -38,10 +38,11 @@
     /* RealEye item (stimulus) UUIDs, one set per RealEye study.
        main  = the visible Embedded Website item (title, briefing, quiz, post-quiz, end screens)
        t1-t5 = the five HIDDEN copies of the same item (eye icon), one per trial -> one heatmap per trial
+       popup = hidden item for the "Go to ... ?" confirm pop-up (and the walk animation after Yes), kept out of the trials
        Copy each UUID from RealEye (Study setup -> item -> Stimulus UUID). Leave '' to skip. */
     STIMULUS_IDS: {
-      comp: { main:'164d7bc8-10d5-4b54-9e7c-784a8cbcb879', t1:'14acce60-4b3c-4d5f-92e5-10151572a25f', t2:'38d448d3-ce9a-4960-a964-fe0355267569', t3:'1f80eea5-3b22-4691-bc7f-5f1acfb8bc73', t4:'9116c826-f902-4c9a-94ff-e675f530f56f', t5:'d438a364-d190-438a-861f-fb53acfa9b2e' },   // Competition study
-      none: { main:'2285fe46-a0d0-4125-92fc-dc087eb8e51a', t1:'641e8858-7e01-4cbe-84e6-fb14bf387358', t2:'05110cd4-088f-47af-b21a-3413d62ba826', t3:'6d6953df-4a80-4b55-a415-6de29ebd1fa5', t4:'fc91dccb-a0db-47ae-bce8-820bc9b6a0f5', t5:'b5e7d616-b671-4cb1-837b-487050dc0d27' }    // No-competition study
+      comp: { popup:'ed93986f-5050-42f8-9115-3281ab9cb2e6', main:'164d7bc8-10d5-4b54-9e7c-784a8cbcb879', t1:'14acce60-4b3c-4d5f-92e5-10151572a25f', t2:'38d448d3-ce9a-4960-a964-fe0355267569', t3:'1f80eea5-3b22-4691-bc7f-5f1acfb8bc73', t4:'9116c826-f902-4c9a-94ff-e675f530f56f', t5:'d438a364-d190-438a-861f-fb53acfa9b2e' },   // Competition study
+      none: { popup:'1e72d34e-661b-4374-b78e-d2bd679e81e8', main:'2285fe46-a0d0-4125-92fc-dc087eb8e51a', t1:'641e8858-7e01-4cbe-84e6-fb14bf387358', t2:'05110cd4-088f-47af-b21a-3413d62ba826', t3:'6d6953df-4a80-4b55-a415-6de29ebd1fa5', t4:'fc91dccb-a0db-47ae-bce8-820bc9b6a0f5', t5:'b5e7d616-b671-4cb1-837b-487050dc0d27' }    // No-competition study
     }
   };
 </script>
@@ -562,8 +563,10 @@ body.game-on .wrap{max-width:none;padding:12px;display:flex;justify-content:cent
     $('g-sel').textContent = 'Selected: ' + slotName[slot];
     $('hunt').disabled = false;
   }
-  $('hunt').onclick = () => { if (selected === null || busy) return; $('m-text').textContent = 'GO TO ' + slotName[selected].toUpperCase() + '?'; $('modal').classList.remove('hidden'); };
-  $('m-back').onclick = () => $('modal').classList.add('hidden');
+  $('hunt').onclick = () => { if (selected === null || busy) return; $('m-text').textContent = 'GO TO ' + slotName[selected].toUpperCase() + '?'; $('modal').classList.remove('hidden');
+    setStim('popup'); requestAnimationFrame(() => RE('startNextExposure')); };   // pop-up gaze goes to the popup item, not the trial
+  $('m-back').onclick = () => { $('modal').classList.add('hidden');
+    setStim('t'+(r+1)); requestAnimationFrame(() => RE('startNextExposure')); };     // "No": back to this trial's item
   $('m-ok').onclick = () => { $('modal').classList.add('hidden'); commit(); };
 
   function commit(){
