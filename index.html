@@ -420,15 +420,68 @@ body.game-on .wrap{max-width:none;padding:12px;display:flex;justify-content:cent
     el('rect',{x:-5,y:6,width:10,height:16,fill:'#2b6cb0',stroke:'#141414','stroke-width':2},h);
     const lab = el('text',{x:0,y:40,'text-anchor':'middle','font-family':'Bangers, Impact','font-size':15,fill:'#141414'},h); lab.textContent = 'YOUR PLACE';
   }
-  /* Eye-tracking AOIs: one fixed, equal-size box (220 x 150 map units) centred on each shop.
-     Boxes never move, so the same rectangles apply on every trial. Letters follow the map position:
-     A top-left, B top-right, C bottom-right, D bottom-middle, E bottom-left (= map slots 0-4). */
+  /* Eye-tracking AOIs (Option 3), drawn fresh on every trial in map units (map = 800 x 470):
+     - t#-highest : 2 x 2 city-block box around the highest-% shop
+     - t#-optimal : 2 x 2 city-block box around the optimal shop (Competition trap trials only, when it is a different shop)
+       (when the highest shop IS the optimal one, it is named t#-highest-optimal in Competition)
+     - t#-other-1, -2, ... : the rest of the map (incl. home and park) split into rectangles (numbered top-to-bottom, left-to-right)
+     Shop letters (A top-left, B top-right, C bottom-right, D bottom-middle, E bottom-left) are still saved in the data. */
   const BOX_LETTERS = ['A','B','C','D','E'];
-  const AOI_W = 220, AOI_H = 150;
-  function drawAoiBoxes(svg){
+  const MAP_W = 800, MAP_H = 470;
+  /* Shop AOIs follow the street grid (streets every 160 x 118 map units): each shop's box is the 2 x 2 group of
+     city blocks around it, measured from street centre lines. The bottom-middle shop (D) sits in the middle of a
+     column, so its box is the same width (2 blocks) centred on it. Top boxes are 320 x 236, bottom boxes 320 x 234
+     (the map ends at 470). */
+  const SHOP_BOX = [
+    {x:0,   y:0,   w:320, h:236},   // A top-left
+    {x:480, y:0,   w:320, h:236},   // B top-right
+    {x:480, y:236, w:320, h:234},   // C bottom-right
+    {x:240, y:236, w:320, h:234},   // D bottom-middle
+    {x:0,   y:236, w:320, h:234}    // E bottom-left
+  ];
+  function shopBox(slot){ return {...SHOP_BOX[slot]}; }
+  function otherRects(holes){                   // split the map minus the shop boxes into as few rectangles as possible
+    const xs = [...new Set([0, MAP_W, ...holes.flatMap(b => [b.x, b.x+b.w])])].sort((a,b)=>a-b);
+    const ys = [...new Set([0, MAP_H, ...holes.flatMap(b => [b.y, b.y+b.h])])].sort((a,b)=>a-b);
+    const inHole = (cx,cy) => holes.some(b => cx > b.x && cx < b.x+b.w && cy > b.y && cy < b.y+b.h);
+    const out = []; let open = [];
+    for (let j = 0; j < ys.length-1; j++){
+      const runs = []; let run = null;
+      for (let i = 0; i < xs.length-1; i++){
+        const free = !inHole((xs[i]+xs[i+1])/2, (ys[j]+ys[j+1])/2);
+        if (free) { if (run) run.x1 = xs[i+1]; else run = {x0:xs[i], x1:xs[i+1]}; }
+        else if (run) { runs.push(run); run = null; }
+      }
+      if (run) runs.push(run);
+      const next = [];
+      runs.forEach(rn => {
+        const k = open.findIndex(o => o.x === rn.x0 && o.x + o.w === rn.x1);
+        if (k >= 0) { const o = open.splice(k,1)[0]; o.h = ys[j+1] - o.y; next.push(o); }
+        else next.push({x:rn.x0, y:ys[j], w:rn.x1-rn.x0, h:ys[j+1]-ys[j]});
+      });
+      out.push(...open); open = next;
+    }
+    out.push(...open);
+    return out.sort((a,b) => a.y - b.y || a.x - b.x);
+  }
+  function buildAois(highestSlot, optimalSlot){
+    const t = `t${r+1}`, list = [];
+    const same = highestSlot === optimalSlot;
+    list.push({name: same && S.cond === 'comp' ? `${t}-highest-optimal` : `${t}-highest`, slot: highestSlot, ...shopBox(highestSlot)});
+    if (!same) list.push({name:`${t}-optimal`, slot: optimalSlot, ...shopBox(optimalSlot)});
+    otherRects(list.map(a => a)).forEach((b,i) => list.push({name:`${t}-other-${i+1}`, ...b}));
+    return list;
+  }
+  function drawAoiBoxes(svg, aois){
     const layer = el('g',{id:'aoi-layer','pointer-events':'none'},svg);
-    SLOTS.forEach(([x,y],i) => el('rect',{x:x-AOI_W/2, y:(y+8)-AOI_H/2, width:AOI_W, height:AOI_H,
-      fill:'transparent', stroke:S.debug?'#e63946':'none', 'stroke-dasharray':'6 4', 'data-re-aoi-name':`t${r+1}-shop-area-${BOX_LETTERS[i]}`}, layer));
+    aois.forEach(a => {
+      const shop = a.slot !== undefined;
+      el('rect',{x:a.x, y:a.y, width:a.w, height:a.h, fill: S.debug ? (shop ? 'rgba(230,57,70,.10)' : 'rgba(43,108,176,.06)') : 'transparent',
+        stroke: S.debug ? (shop ? '#e63946' : '#2b6cb0') : 'none', 'stroke-width': shop ? 3 : 2, 'stroke-dasharray': shop ? '' : '6 4',
+        'data-re-aoi-name': a.name}, layer);
+      if (S.debug){ const tx = el('text',{x:a.x+6, y:a.y+16, 'font-family':'Arial', 'font-size':13, 'font-weight':700,
+        fill: shop ? '#e63946' : '#2b6cb0'}, layer); tx.textContent = a.name; }
+    });
   }
   function drawShop(svg, slot, s){
     const [x,y] = SLOTS[slot], R = ROUNDS[r], rank = slotRank[slot];
@@ -461,6 +514,7 @@ body.game-on .wrap{max-width:none;padding:12px;display:flex;justify-content:cent
     c.style.zoom = Math.floor(z * 1000) / 1000;   // shrinks on small screens too, so nothing scrolls
   }
   addEventListener('resize', fitGame);
+  let curAois = [];
   function startRound(){
     setStim('t'+(r+1));          // switch RealEye to this trial's hidden item BEFORE the new exposure starts
     show('s-game');
@@ -485,7 +539,9 @@ body.game-on .wrap{max-width:none;padding:12px;display:flex;justify-content:cent
     $('hunt').disabled = true;
     const svg = $('map'); drawCity(svg);
     slotName.forEach((n,i) => drawShop(svg, i, n));
-    drawAoiBoxes(svg);
+    const odds0 = [0,1,2,3,4].map(k => oddsAt(R,k)), bestRank0 = odds0.indexOf(Math.max(...odds0));
+    curAois = buildAois(slotRank.indexOf(0), slotRank.indexOf(bestRank0));
+    drawAoiBoxes(svg, curAois);
     el('g',{id:'hunter-layer'},svg);
     fitGame();
     roundStart = performance.now();
@@ -518,6 +574,7 @@ body.game-on .wrap{max-width:none;padding:12px;display:flex;justify-content:cent
       chosenOdds:+odds[rank].toFixed(2), bestOdds:+best.toFixed(2), bestRank,
       highestIsOptimal:bestRank===0, choseHighest:rank===0, choseBest:rank===bestRank,
       highestBox:BOX_LETTERS[slotRank.indexOf(0)], optimalBox:BOX_LETTERS[slotRank.indexOf(bestRank)], chosenBox:BOX_LETTERS[selected],
+      aois: curAois.map(a => ({name:a.name, x:a.x, y:a.y, w:a.w, h:a.h})),
       rtMs:Math.round(performance.now()-roundStart), reselections
     });
     RE('sendUserInteraction', {event:'choice', ...data.rounds[data.rounds.length-1]});
